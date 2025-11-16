@@ -145,8 +145,11 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>RSS Feed Reader</title>
+        <title>Edgewater Research - Feed Monitor</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
 
       {statusMessage && (
@@ -156,9 +159,22 @@ export default function Home() {
       <div className="container">
         <div className="feed-section">
           <div className="header">
-            <h1>📰 RSS Feed Reader</h1>
+            <div className="brand-header">
+              <div className="brand-logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="32" height="32" rx="4" fill="white" fillOpacity="0.15"/>
+                  <path d="M8 12h16M8 16h16M8 20h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <div className="brand-text">
+                  <h1>Edgewater Research</h1>
+                  <p className="brand-tagline">Market Intelligence Feed Monitor</p>
+                </div>
+              </div>
+            </div>
             <div className="webhook-config">
+              <label htmlFor="webhook-url">Webhook Configuration</label>
               <input
+                id="webhook-url"
                 type="text"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
@@ -168,10 +184,10 @@ export default function Home() {
           </div>
 
           <div className="feed-controls">
-            <button onClick={loadFeeds} disabled={loading}>
-              🔄 {loading ? 'Loading...' : 'Refresh Feeds'}
+            <button onClick={loadFeeds} disabled={loading} className="btn-primary">
+              {loading ? 'Loading...' : 'Refresh Feeds'}
             </button>
-            <button onClick={clearApproved}>🗑️ Clear Approved</button>
+            <button onClick={clearApproved} className="btn-secondary">Clear Approved</button>
           </div>
 
           <div className="feed-list">
@@ -195,14 +211,14 @@ export default function Home() {
                         className="btn-visit"
                         onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
                       >
-                        🔗 Visit
+                        View Article
                       </button>
                       <button
                         className={`btn-approve ${item.approved ? 'approved' : ''}`}
                         onClick={() => approveStory(item)}
                         disabled={item.approved}
                       >
-                        {item.approved ? '✓ Approved' : '✓ Approve'}
+                        {item.approved ? 'Approved' : 'Approve'}
                       </button>
                     </div>
                   </div>
@@ -214,7 +230,8 @@ export default function Home() {
 
         <div className="notes-section">
           <div className="notes-header">
-            <h2>✅ Approved Stories</h2>
+            <h2>Approved Stories</h2>
+            <p className="notes-subtitle">{approvedStories.length} {approvedStories.length === 1 ? 'story' : 'stories'} approved</p>
           </div>
           <div className="notes-content">
             {approvedStories.length === 0 ? (
@@ -247,8 +264,8 @@ export default function Home() {
         }
 
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-          background: #ffffff;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+          background: #f5f7fa;
           height: 100vh;
           overflow: hidden;
         }
@@ -275,85 +292,137 @@ export default function Home() {
         }
 
         .header {
-          padding: 24px 28px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 28px 32px;
+          background: linear-gradient(135deg, #002855 0%, #003d82 100%);
           color: white;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 8px rgba(0,40,85,0.15);
         }
 
-        .header h1 {
-          font-size: 26px;
+        .brand-header {
+          margin-bottom: 20px;
+        }
+
+        .brand-logo {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .brand-text h1 {
+          font-size: 24px;
           font-weight: 700;
-          margin-bottom: 12px;
-          letter-spacing: -0.5px;
+          margin: 0;
+          letter-spacing: -0.3px;
+        }
+
+        .brand-tagline {
+          font-size: 13px;
+          font-weight: 400;
+          opacity: 0.85;
+          margin-top: 4px;
+          letter-spacing: 0.2px;
         }
 
         .webhook-config {
-          margin-top: 12px;
+          margin-top: 0;
+        }
+
+        .webhook-config label {
+          display: block;
+          font-size: 12px;
+          font-weight: 600;
+          margin-bottom: 8px;
+          opacity: 0.9;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .webhook-config input {
           width: 100%;
-          padding: 10px 12px;
-          border: 1px solid rgba(255,255,255,0.3);
-          background: rgba(255,255,255,0.15);
+          padding: 11px 14px;
+          border: 1px solid rgba(255,255,255,0.25);
+          background: rgba(255,255,255,0.12);
           color: white;
-          border-radius: 6px;
+          border-radius: 8px;
           font-size: 13px;
+          font-family: 'Inter', sans-serif;
           backdrop-filter: blur(10px);
           transition: all 0.2s;
         }
 
         .webhook-config input::placeholder {
-          color: rgba(255,255,255,0.7);
+          color: rgba(255,255,255,0.6);
         }
 
         .webhook-config input:focus {
           outline: none;
-          background: rgba(255,255,255,0.25);
-          border-color: rgba(255,255,255,0.5);
+          background: rgba(255,255,255,0.2);
+          border-color: rgba(255,255,255,0.4);
+          box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
         }
 
         .feed-controls {
-          padding: 16px 28px;
+          padding: 18px 32px;
           background: #ffffff;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid #e1e8ed;
           display: flex;
-          gap: 10px;
+          gap: 12px;
         }
 
-        .feed-controls button {
-          padding: 9px 18px;
-          background: #667eea;
+        .btn-primary {
+          padding: 10px 20px;
+          background: #002855;
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           cursor: pointer;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
           transition: all 0.2s;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          box-shadow: 0 2px 4px rgba(0,40,85,0.15);
         }
 
-        .feed-controls button:hover:not(:disabled) {
-          background: #5568d3;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        .btn-primary:hover:not(:disabled) {
+          background: #003d82;
+          box-shadow: 0 4px 8px rgba(0,40,85,0.25);
           transform: translateY(-1px);
         }
 
-        .feed-controls button:disabled {
-          opacity: 0.6;
+        .btn-primary:disabled {
+          opacity: 0.5;
           cursor: not-allowed;
+          transform: none;
+        }
+
+        .btn-secondary {
+          padding: 10px 20px;
+          background: transparent;
+          color: #002855;
+          border: 2px solid #002855;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+          background: #002855;
+          color: white;
+          transform: translateY(-1px);
         }
 
         .feed-list {
           flex: 1;
           overflow-y: auto;
-          padding: 20px 28px;
+          padding: 24px 32px;
+          background: #f5f7fa;
         }
 
         .feed-list::-webkit-scrollbar {
-          width: 8px;
+          width: 10px;
         }
 
         .feed-list::-webkit-scrollbar-track {
@@ -361,61 +430,66 @@ export default function Home() {
         }
 
         .feed-list::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 4px;
+          background: #cbd5e1;
+          border-radius: 5px;
+        }
+
+        .feed-list::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
 
         .feed-item {
           background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          padding: 20px;
-          margin-bottom: 16px;
-          transition: all 0.2s;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+          border: 1px solid #e1e8ed;
+          border-radius: 12px;
+          padding: 24px;
+          margin-bottom: 18px;
+          transition: all 0.25s ease;
+          box-shadow: 0 1px 3px rgba(0,40,85,0.06);
         }
 
         .feed-item:hover {
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-          border-color: #667eea;
+          box-shadow: 0 8px 20px rgba(0,40,85,0.12);
+          border-color: #002855;
           transform: translateY(-2px);
         }
 
         .feed-item.approved {
-          border-left: 4px solid #10b981;
+          border-left: 4px solid #059669;
           background: #f0fdf4;
         }
 
         .feed-source {
           display: inline-block;
-          padding: 5px 10px;
-          background: #667eea;
+          padding: 6px 12px;
+          background: #002855;
           color: white;
-          border-radius: 5px;
+          border-radius: 6px;
           font-size: 11px;
-          font-weight: 600;
-          margin-bottom: 10px;
-          letter-spacing: 0.3px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          letter-spacing: 0.5px;
           text-transform: uppercase;
         }
 
         .feed-source.reuters {
-          background: #f97316;
+          background: #d97706;
         }
 
         .feed-title {
-          font-size: 17px;
-          font-weight: 600;
-          margin-bottom: 10px;
-          color: #111827;
-          line-height: 1.4;
+          font-size: 18px;
+          font-weight: 700;
+          margin-bottom: 12px;
+          color: #0f172a;
+          line-height: 1.5;
+          letter-spacing: -0.2px;
         }
 
         .feed-description {
           font-size: 14px;
-          color: #6b7280;
-          margin-bottom: 10px;
-          line-height: 1.6;
+          color: #475569;
+          margin-bottom: 12px;
+          line-height: 1.7;
         }
 
         .feed-meta {
@@ -439,133 +513,162 @@ export default function Home() {
         }
 
         .btn-approve {
-          padding: 7px 14px;
-          background: #10b981;
+          padding: 8px 16px;
+          background: #059669;
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: 7px;
           cursor: pointer;
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
           transition: all 0.2s;
         }
 
         .btn-approve:hover:not(:disabled) {
-          background: #059669;
+          background: #047857;
           transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(5,150,105,0.3);
         }
 
         .btn-approve.approved {
-          background: #9ca3af;
+          background: #94a3b8;
           cursor: not-allowed;
         }
 
         .btn-visit {
-          padding: 7px 14px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 6px;
+          padding: 8px 16px;
+          background: transparent;
+          color: #002855;
+          border: 2px solid #002855;
+          border-radius: 7px;
           cursor: pointer;
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
           transition: all 0.2s;
         }
 
         .btn-visit:hover {
-          background: #2563eb;
+          background: #002855;
+          color: white;
           transform: translateY(-1px);
         }
 
         .notes-header {
-          padding: 24px 28px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 28px 32px;
+          background: linear-gradient(135deg, #002855 0%, #003d82 100%);
           color: white;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 8px rgba(0,40,85,0.15);
         }
 
         .notes-header h2 {
           font-size: 20px;
           font-weight: 700;
           letter-spacing: -0.3px;
+          margin-bottom: 6px;
+        }
+
+        .notes-subtitle {
+          font-size: 12px;
+          opacity: 0.85;
+          font-weight: 500;
+          letter-spacing: 0.3px;
         }
 
         .notes-content {
           flex: 1;
           overflow-y: auto;
-          padding: 20px 28px;
+          padding: 24px 32px;
+          background: #f8fafc;
         }
 
         .notes-content::-webkit-scrollbar {
-          width: 8px;
+          width: 10px;
         }
 
         .notes-content::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 4px;
+          background: #cbd5e1;
+          border-radius: 5px;
+        }
+
+        .notes-content::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
 
         .note-item {
           background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          padding: 18px;
-          margin-bottom: 14px;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+          border: 1px solid #e1e8ed;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0,40,85,0.06);
         }
 
         .note-title {
           font-size: 15px;
-          font-weight: 600;
-          margin-bottom: 10px;
-          color: #111827;
-          line-height: 1.4;
+          font-weight: 700;
+          margin-bottom: 12px;
+          color: #0f172a;
+          line-height: 1.5;
+          letter-spacing: -0.1px;
         }
 
         .note-summary {
           font-size: 13px;
-          color: #6b7280;
-          line-height: 1.6;
+          color: #475569;
+          line-height: 1.7;
           white-space: pre-wrap;
         }
 
         .note-meta {
           font-size: 12px;
-          color: #9ca3af;
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px solid #f3f4f6;
+          color: #64748b;
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #e1e8ed;
           font-weight: 500;
         }
 
         .loading {
           text-align: center;
-          padding: 60px 20px;
-          color: #9ca3af;
+          padding: 80px 20px;
+          color: #64748b;
           font-size: 15px;
+          font-weight: 500;
         }
 
         .loading::before {
-          content: "⏳ ";
-          font-size: 24px;
-          display: block;
-          margin-bottom: 10px;
+          content: "";
+          display: inline-block;
+          width: 40px;
+          height: 40px;
+          margin-bottom: 16px;
+          border: 4px solid #e1e8ed;
+          border-top-color: #002855;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         .status-message {
           position: fixed;
-          top: 24px;
-          right: 24px;
-          padding: 14px 22px;
-          background: #10b981;
+          top: 28px;
+          right: 28px;
+          padding: 16px 24px;
+          background: #059669;
           color: white;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(5,150,105,0.25);
           opacity: 0;
-          transition: opacity 0.3s;
+          transition: opacity 0.3s ease;
           z-index: 1000;
-          font-weight: 500;
+          font-weight: 600;
           font-size: 14px;
+          font-family: 'Inter', sans-serif;
         }
 
         .status-message.show {
@@ -574,19 +677,21 @@ export default function Home() {
 
         .empty-state {
           text-align: center;
-          padding: 60px 40px;
-          color: #9ca3af;
+          padding: 80px 40px;
+          color: #94a3b8;
         }
 
         .empty-state-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-          opacity: 0.5;
+          font-size: 56px;
+          margin-bottom: 20px;
+          opacity: 0.4;
         }
 
         .empty-state-text {
           font-size: 15px;
-          line-height: 1.6;
+          line-height: 1.7;
+          color: #64748b;
+          font-weight: 500;
         }
       `}</style>
     </>
