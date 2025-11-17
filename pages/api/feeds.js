@@ -4,7 +4,7 @@ const parser = new Parser();
 
 const FEEDS = {
   bloomberg: 'https://feeds.bloomberg.com/technology/news.rss',
-  reuters: 'https://feeds.reuters.com/reuters/technologyNews',
+  reuters: 'https://news.google.com/rss/search?q=reuters+technology&hl=en-US&gl=US&ceid=US:en',
   digitimes: 'https://www.digitimes.com/rss/daily.xml'
 };
 
