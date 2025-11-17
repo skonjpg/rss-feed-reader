@@ -3,9 +3,11 @@ import Head from 'next/head';
 
 export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
-  const [approvedStories, setApprovedStories] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [summary, setSummary] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
@@ -50,66 +52,62 @@ export default function Home() {
     }
   };
 
-  const approveStory = async (item) => {
-    const updatedItems = feedItems.map(i => 
+  const approveStory = (item) => {
+    const updatedItems = feedItems.map(i =>
       i.id === item.id ? { ...i, approved: true } : i
     );
     setFeedItems(updatedItems);
+    showStatus('✅ Story approved');
+  };
 
-    if (webhookUrl.trim()) {
-      try {
-        showStatus('📤 Sending to webhook...');
-        
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: item.title,
-            description: item.description,
-            link: item.link,
-            source: item.sourceName,
-            pubDate: item.pubDate
-          })
-        });
+  const summarizeWithAI = async () => {
+    if (!notes.trim()) {
+      showStatus('⚠️ Please enter some notes to summarize');
+      return;
+    }
 
-        if (response.ok) {
-          const result = await response.json();
-          setApprovedStories([{
-            ...item,
-            summary: result.summary || 'Summary received',
-            approvedAt: new Date()
-          }, ...approvedStories]);
-          showStatus('✅ Story approved and summarized!');
-        } else {
-          throw new Error('Webhook failed');
-        }
-      } catch (error) {
-        setApprovedStories([{
-          ...item,
-          summary: 'Webhook error: ' + error.message,
-          approvedAt: new Date()
-        }, ...approvedStories]);
-        showStatus('✅ Story approved (webhook unavailable)');
+    if (!webhookUrl.trim()) {
+      showStatus('⚠️ Please configure webhook URL first');
+      return;
+    }
+
+    setSummarizing(true);
+    try {
+      showStatus('🤖 Summarizing with AI...');
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: notes,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSummary(result.summary || 'Summary received from AI');
+        showStatus('✅ Summary generated!');
+      } else {
+        throw new Error('Webhook failed with status: ' + response.status);
       }
-    } else {
-      setApprovedStories([{
-        ...item,
-        summary: 'Configure webhook URL for automatic summarization',
-        approvedAt: new Date()
-      }, ...approvedStories]);
-      showStatus('✅ Story approved');
+    } catch (error) {
+      showStatus('❌ Error: ' + error.message);
+      setSummary('Error generating summary: ' + error.message);
+    } finally {
+      setSummarizing(false);
     }
   };
 
-  const clearApproved = () => {
-    if (approvedStories.length === 0) {
-      showStatus('No approved stories to clear');
+  const clearNotes = () => {
+    if (!notes.trim() && !summary.trim()) {
+      showStatus('Notes are already empty');
       return;
     }
-    if (confirm('Clear all approved stories?')) {
-      setApprovedStories([]);
-      setFeedItems(feedItems.map(i => ({ ...i, approved: false })));
-      showStatus('🗑️ Approved stories cleared');
+    if (confirm('Clear all notes and summary?')) {
+      setNotes('');
+      setSummary('');
+      showStatus('🗑️ Notes cleared');
     }
   };
 
@@ -187,7 +185,6 @@ export default function Home() {
             <button onClick={loadFeeds} disabled={loading} className="btn-primary">
               {loading ? 'Loading...' : 'Refresh Feeds'}
             </button>
-            <button onClick={clearApproved} className="btn-secondary">Clear Approved</button>
           </div>
 
           <div className="feed-list">
@@ -230,27 +227,38 @@ export default function Home() {
 
         <div className="notes-section">
           <div className="notes-header">
-            <h2>Approved Stories</h2>
-            <p className="notes-subtitle">{approvedStories.length} {approvedStories.length === 1 ? 'story' : 'stories'} approved</p>
+            <h2>Research Notes</h2>
+            <p className="notes-subtitle">Write your notes and summarize with AI</p>
           </div>
           <div className="notes-content">
-            {approvedStories.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
-                <div className="empty-state-text">
-                  No approved stories yet.<br />Click "Approve" on any story to add it here.
-                </div>
+            <div className="notes-editor">
+              <textarea
+                className="notes-textarea"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Write your research notes here...&#10;&#10;You can add thoughts, observations, and key points from the articles you're reviewing."
+              />
+              <div className="notes-actions">
+                <button
+                  onClick={summarizeWithAI}
+                  disabled={summarizing || !notes.trim()}
+                  className="btn-ai"
+                >
+                  {summarizing ? '🤖 Summarizing...' : '🤖 Summarize with AI'}
+                </button>
+                <button
+                  onClick={clearNotes}
+                  className="btn-clear"
+                >
+                  Clear Notes
+                </button>
               </div>
-            ) : (
-              approvedStories.map((story, index) => (
-                <div key={index} className="note-item">
-                  <div className="note-title">{story.title}</div>
-                  <div className="note-summary">{story.summary}</div>
-                  <div className="note-meta">
-                    {story.sourceName} • Approved {formatDate(story.approvedAt)}
-                  </div>
-                </div>
-              ))
+            </div>
+            {summary && (
+              <div className="summary-section">
+                <h3 className="summary-title">AI Summary</h3>
+                <div className="summary-content">{summary}</div>
+              </div>
             )}
           </div>
         </div>
@@ -585,6 +593,9 @@ export default function Home() {
           overflow-y: auto;
           padding: 24px 32px;
           background: #f8fafc;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
         }
 
         .notes-content::-webkit-scrollbar {
@@ -600,38 +611,121 @@ export default function Home() {
           background: #94a3b8;
         }
 
-        .note-item {
+        .notes-editor {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .notes-textarea {
+          width: 100%;
+          min-height: 200px;
+          padding: 16px;
+          border: 2px solid #e1e8ed;
+          border-radius: 12px;
+          font-size: 14px;
+          font-family: 'Inter', sans-serif;
+          line-height: 1.7;
+          color: #0f172a;
           background: white;
-          border: 1px solid #e1e8ed;
+          resize: vertical;
+          transition: all 0.2s;
+        }
+
+        .notes-textarea::placeholder {
+          color: #94a3b8;
+        }
+
+        .notes-textarea:focus {
+          outline: none;
+          border-color: #002855;
+          box-shadow: 0 0 0 3px rgba(0, 40, 85, 0.1);
+        }
+
+        .notes-actions {
+          display: flex;
+          gap: 12px;
+        }
+
+        .btn-ai {
+          flex: 1;
+          padding: 12px 24px;
+          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.25);
+        }
+
+        .btn-ai:hover:not(:disabled) {
+          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          transform: translateY(-1px);
+        }
+
+        .btn-ai:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .btn-clear {
+          padding: 12px 24px;
+          background: transparent;
+          color: #64748b;
+          border: 2px solid #e1e8ed;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-clear:hover {
+          border-color: #dc2626;
+          color: #dc2626;
+          background: #fef2f2;
+        }
+
+        .summary-section {
+          background: white;
+          border: 2px solid #8b5cf6;
           border-radius: 12px;
           padding: 20px;
-          margin-bottom: 16px;
-          box-shadow: 0 1px 3px rgba(0,40,85,0.06);
+          animation: fadeIn 0.3s ease;
         }
 
-        .note-title {
-          font-size: 15px;
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .summary-title {
+          font-size: 14px;
           font-weight: 700;
+          color: #8b5cf6;
           margin-bottom: 12px;
-          color: #0f172a;
-          line-height: 1.5;
-          letter-spacing: -0.1px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
-        .note-summary {
-          font-size: 13px;
-          color: #475569;
+        .summary-content {
+          font-size: 14px;
+          color: #0f172a;
           line-height: 1.7;
           white-space: pre-wrap;
-        }
-
-        .note-meta {
-          font-size: 12px;
-          color: #64748b;
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid #e1e8ed;
-          font-weight: 500;
         }
 
         .loading {
