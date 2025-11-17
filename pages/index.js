@@ -86,13 +86,27 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('Webhook response:', result);
+
+        // Try to extract summary from various possible response formats
+        let summaryText = result.summary || result.message || result.text || result.output;
+
+        // If result is a string, use it directly
+        if (typeof result === 'string') {
+          summaryText = result;
+        }
+
+        // If still no summary, stringify the whole response
+        if (!summaryText) {
+          summaryText = JSON.stringify(result, null, 2);
+        }
+
         const newSummary = {
-          text: result.summary || 'Summary received from AI',
+          text: summaryText,
           timestamp: new Date(),
           id: Date.now()
         };
         setSummaries([newSummary, ...summaries]);
-        showStatus('✅ Summary generated!');
       } else {
         throw new Error('Webhook failed with status: ' + response.status);
       }
