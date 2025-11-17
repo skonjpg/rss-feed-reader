@@ -5,7 +5,6 @@ export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
   const [notes, setNotes] = useState('');
   const [summaries, setSummaries] = useState([]);
-  const [webhookUrl, setWebhookUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -13,18 +12,9 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    // Load webhook URL from localStorage
-    const saved = localStorage.getItem('webhookUrl');
-    if (saved) setWebhookUrl(saved);
-    
     // Load feeds on mount
     loadFeeds();
   }, []);
-
-  useEffect(() => {
-    // Save webhook URL to localStorage
-    localStorage.setItem('webhookUrl', webhookUrl);
-  }, [webhookUrl]);
 
   const showStatus = (message, duration = 3000) => {
     setStatusMessage(message);
@@ -68,75 +58,28 @@ export default function Home() {
       return;
     }
 
-    if (!webhookUrl.trim()) {
-      showStatus('⚠️ Please configure webhook URL first');
-      return;
-    }
-
     setSummarizing(true);
     try {
       showStatus('🤖 Summarizing with AI...');
 
-      const response = await fetch(webhookUrl, {
+      const response = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notes: notes,
-          timestamp: new Date().toISOString()
-        })
+        body: JSON.stringify({ notes: notes })
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Webhook response:', result);
-
-        // Extract clean text from webhook response
-        let summaryText = '';
-
-        // If result is a string, use it directly
-        if (typeof result === 'string') {
-          summaryText = result;
-        }
-        // Try various common field names
-        else if (result.summary) {
-          summaryText = typeof result.summary === 'string' ? result.summary : JSON.stringify(result.summary);
-        }
-        else if (result.message) {
-          summaryText = typeof result.message === 'string' ? result.message : JSON.stringify(result.message);
-        }
-        else if (result.text) {
-          summaryText = typeof result.text === 'string' ? result.text : JSON.stringify(result.text);
-        }
-        else if (result.output) {
-          summaryText = typeof result.output === 'string' ? result.output : JSON.stringify(result.output);
-        }
-        else if (result.response) {
-          summaryText = typeof result.response === 'string' ? result.response : JSON.stringify(result.response);
-        }
-        else if (result.content) {
-          summaryText = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
-        }
-        // Check for nested data
-        else if (result.data) {
-          if (typeof result.data === 'string') {
-            summaryText = result.data;
-          } else if (result.data.summary || result.data.message || result.data.text) {
-            summaryText = result.data.summary || result.data.message || result.data.text;
-          }
-        }
-        // Last resort: stringify but warn
-        else {
-          summaryText = 'Unexpected response format. Raw data:\n' + JSON.stringify(result, null, 2);
-        }
-
         const newSummary = {
-          text: summaryText,
+          text: result.summary || 'No summary returned',
           timestamp: new Date(),
           id: Date.now()
         };
         setSummaries([newSummary, ...summaries]);
+        showStatus('✅ Summary generated!');
       } else {
-        throw new Error('Webhook failed with status: ' + response.status);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate summary');
       }
     } catch (error) {
       showStatus('❌ Error: ' + error.message);
@@ -251,16 +194,6 @@ export default function Home() {
                   <p className="brand-tagline">Market Intelligence Feed Monitor</p>
                 </div>
               </div>
-            </div>
-            <div className="webhook-config">
-              <label htmlFor="webhook-url">Webhook Configuration</label>
-              <input
-                id="webhook-url"
-                type="text"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                placeholder="Enter n8n webhook URL for auto-summarization"
-              />
             </div>
           </div>
 
@@ -436,44 +369,6 @@ export default function Home() {
           opacity: 0.85;
           margin-top: 4px;
           letter-spacing: 0.2px;
-        }
-
-        .webhook-config {
-          margin-top: 0;
-        }
-
-        .webhook-config label {
-          display: block;
-          font-size: 12px;
-          font-weight: 600;
-          margin-bottom: 8px;
-          opacity: 0.9;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .webhook-config input {
-          width: 100%;
-          padding: 11px 14px;
-          border: 1px solid rgba(255,255,255,0.25);
-          background: rgba(255,255,255,0.12);
-          color: white;
-          border-radius: 8px;
-          font-size: 13px;
-          font-family: 'Inter', sans-serif;
-          backdrop-filter: blur(10px);
-          transition: all 0.2s;
-        }
-
-        .webhook-config input::placeholder {
-          color: rgba(255,255,255,0.6);
-        }
-
-        .webhook-config input:focus {
-          outline: none;
-          background: rgba(255,255,255,0.2);
-          border-color: rgba(255,255,255,0.4);
-          box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
         }
 
         .feed-controls {
