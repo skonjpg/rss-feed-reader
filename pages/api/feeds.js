@@ -4,8 +4,8 @@ const parser = new Parser();
 
 const FEEDS = {
   bloomberg: 'https://feeds.bloomberg.com/technology/news.rss',
-  reuters: 'https://feeds.reuters.com/reuters/technologyNews',
-  digitimes: 'https://www.digitimes.com/rss/asia.xml'
+  reuters: 'https://news.google.com/rss/search?q=reuters+technology&hl=en-US&gl=US&ceid=US:en',
+  digitimes: 'https://www.digitimes.com/rss/daily.xml'
 };
 
 export default async function handler(req, res) {
@@ -21,10 +21,12 @@ export default async function handler(req, res) {
 
   try {
     const results = [];
+    const errors = [];
 
     // Fetch Bloomberg feed
     try {
       const bloombergFeed = await parser.parseURL(FEEDS.bloomberg);
+      console.log(`Bloomberg feed fetched: ${bloombergFeed.items.length} items`);
       bloombergFeed.items.forEach(item => {
         results.push({
           title: item.title || 'No title',
@@ -36,12 +38,14 @@ export default async function handler(req, res) {
         });
       });
     } catch (error) {
-      console.error('Error fetching Bloomberg feed:', error);
+      console.error('Error fetching Bloomberg feed:', error.message);
+      errors.push({ source: 'Bloomberg Tech', error: error.message });
     }
 
     // Fetch Reuters feed
     try {
       const reutersFeed = await parser.parseURL(FEEDS.reuters);
+      console.log(`Reuters feed fetched: ${reutersFeed.items.length} items`);
       reutersFeed.items.forEach(item => {
         results.push({
           title: item.title || 'No title',
@@ -53,12 +57,14 @@ export default async function handler(req, res) {
         });
       });
     } catch (error) {
-      console.error('Error fetching Reuters feed:', error);
+      console.error('Error fetching Reuters feed:', error.message);
+      errors.push({ source: 'Reuters Technology', error: error.message });
     }
 
     // Fetch DigiTimes Asia feed
     try {
       const digitimesFeed = await parser.parseURL(FEEDS.digitimes);
+      console.log(`DigiTimes feed fetched: ${digitimesFeed.items.length} items`);
       digitimesFeed.items.forEach(item => {
         results.push({
           title: item.title || 'No title',
@@ -70,7 +76,13 @@ export default async function handler(req, res) {
         });
       });
     } catch (error) {
-      console.error('Error fetching DigiTimes feed:', error);
+      console.error('Error fetching DigiTimes feed:', error.message);
+      errors.push({ source: 'DigiTimes Asia', error: error.message });
+    }
+
+    console.log(`Total items fetched: ${results.length}`);
+    if (errors.length > 0) {
+      console.log('Feed errors:', errors);
     }
 
     res.status(200).json(results);
