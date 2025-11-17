@@ -4,7 +4,7 @@ import Head from 'next/head';
 export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
   const [notes, setNotes] = useState('');
-  const [summary, setSummary] = useState('');
+  const [summaries, setSummaries] = useState([]);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
@@ -86,27 +86,38 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        setSummary(result.summary || 'Summary received from AI');
+        const newSummary = {
+          text: result.summary || 'Summary received from AI',
+          timestamp: new Date(),
+          id: Date.now()
+        };
+        setSummaries([newSummary, ...summaries]);
         showStatus('✅ Summary generated!');
       } else {
         throw new Error('Webhook failed with status: ' + response.status);
       }
     } catch (error) {
       showStatus('❌ Error: ' + error.message);
-      setSummary('Error generating summary: ' + error.message);
+      const errorSummary = {
+        text: 'Error generating summary: ' + error.message,
+        timestamp: new Date(),
+        id: Date.now(),
+        isError: true
+      };
+      setSummaries([errorSummary, ...summaries]);
     } finally {
       setSummarizing(false);
     }
   };
 
   const clearNotes = () => {
-    if (!notes.trim() && !summary.trim()) {
+    if (!notes.trim() && summaries.length === 0) {
       showStatus('Notes are already empty');
       return;
     }
-    if (confirm('Clear all notes and summary?')) {
+    if (confirm('Clear all notes and summaries?')) {
       setNotes('');
-      setSummary('');
+      setSummaries([]);
       showStatus('🗑️ Notes cleared');
     }
   };
@@ -254,10 +265,17 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            {summary && (
-              <div className="summary-section">
-                <h3 className="summary-title">AI Summary</h3>
-                <div className="summary-content">{summary}</div>
+            {summaries.length > 0 && (
+              <div className="summaries-list">
+                {summaries.map((summary) => (
+                  <div key={summary.id} className={`summary-section ${summary.isError ? 'error' : ''}`}>
+                    <div className="summary-header">
+                      <h3 className="summary-title">AI Summary</h3>
+                      <span className="summary-time">{formatDate(summary.timestamp)}</span>
+                    </div>
+                    <div className="summary-content">{summary.text}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -693,12 +711,22 @@ export default function Home() {
           background: #fef2f2;
         }
 
+        .summaries-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
         .summary-section {
           background: white;
           border: 2px solid #8b5cf6;
           border-radius: 12px;
           padding: 20px;
           animation: fadeIn 0.3s ease;
+        }
+
+        .summary-section.error {
+          border-color: #dc2626;
         }
 
         @keyframes fadeIn {
@@ -712,13 +740,29 @@ export default function Home() {
           }
         }
 
+        .summary-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
         .summary-title {
           font-size: 14px;
           font-weight: 700;
           color: #8b5cf6;
-          margin-bottom: 12px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+        }
+
+        .summary-section.error .summary-title {
+          color: #dc2626;
+        }
+
+        .summary-time {
+          font-size: 12px;
+          color: #64748b;
+          font-weight: 500;
         }
 
         .summary-content {
