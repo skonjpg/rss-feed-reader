@@ -476,6 +476,10 @@ export default function Home() {
           background: #d97706;
         }
 
+        .feed-source.digitimes {
+          background: #7c3aed;
+        }
+
         .feed-title {
           font-size: 18px;
           font-weight: 700;
