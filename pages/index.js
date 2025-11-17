@@ -9,6 +9,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [dividerPosition, setDividerPosition] = useState(60); // percentage
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     // Load webhook URL from localStorage
@@ -88,17 +90,43 @@ export default function Home() {
         const result = await response.json();
         console.log('Webhook response:', result);
 
-        // Try to extract summary from various possible response formats
-        let summaryText = result.summary || result.message || result.text || result.output;
+        // Extract clean text from webhook response
+        let summaryText = '';
 
         // If result is a string, use it directly
         if (typeof result === 'string') {
           summaryText = result;
         }
-
-        // If still no summary, stringify the whole response
-        if (!summaryText) {
-          summaryText = JSON.stringify(result, null, 2);
+        // Try various common field names
+        else if (result.summary) {
+          summaryText = typeof result.summary === 'string' ? result.summary : JSON.stringify(result.summary);
+        }
+        else if (result.message) {
+          summaryText = typeof result.message === 'string' ? result.message : JSON.stringify(result.message);
+        }
+        else if (result.text) {
+          summaryText = typeof result.text === 'string' ? result.text : JSON.stringify(result.text);
+        }
+        else if (result.output) {
+          summaryText = typeof result.output === 'string' ? result.output : JSON.stringify(result.output);
+        }
+        else if (result.response) {
+          summaryText = typeof result.response === 'string' ? result.response : JSON.stringify(result.response);
+        }
+        else if (result.content) {
+          summaryText = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
+        }
+        // Check for nested data
+        else if (result.data) {
+          if (typeof result.data === 'string') {
+            summaryText = result.data;
+          } else if (result.data.summary || result.data.message || result.data.text) {
+            summaryText = result.data.summary || result.data.message || result.data.text;
+          }
+        }
+        // Last resort: stringify but warn
+        else {
+          summaryText = 'Unexpected response format. Raw data:\n' + JSON.stringify(result, null, 2);
         }
 
         const newSummary = {
@@ -135,6 +163,36 @@ export default function Home() {
       showStatus('🗑️ Notes cleared');
     }
   };
+
+  const handleMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const newPosition = (e.clientX / window.innerWidth) * 100;
+    if (newPosition > 30 && newPosition < 80) {
+      setDividerPosition(newPosition);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -180,7 +238,7 @@ export default function Home() {
       )}
 
       <div className="container">
-        <div className="feed-section">
+        <div className="feed-section" style={{ width: `${dividerPosition}%` }}>
           <div className="header">
             <div className="brand-header">
               <div className="brand-logo">
@@ -250,7 +308,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="notes-section">
+        <div className="divider" onMouseDown={handleMouseDown}></div>
+
+        <div className="notes-section" style={{ width: `${100 - dividerPosition}%` }}>
           <div className="notes-header">
             <h2>Research Notes</h2>
             <p className="notes-subtitle">Write your notes and summarize with AI</p>
@@ -313,22 +373,37 @@ export default function Home() {
         .container {
           display: flex;
           height: 100vh;
+          position: relative;
         }
 
         .feed-section {
-          flex: 1;
           display: flex;
           flex-direction: column;
           background: #ffffff;
-          border-right: 1px solid #e5e7eb;
+          overflow: hidden;
+        }
+
+        .divider {
+          width: 4px;
+          background: #e5e7eb;
+          cursor: col-resize;
+          position: relative;
+          transition: background 0.2s;
+        }
+
+        .divider:hover {
+          background: #002855;
+        }
+
+        .divider:active {
+          background: #002855;
         }
 
         .notes-section {
-          width: 420px;
           background: #f9fafb;
           display: flex;
           flex-direction: column;
-          border-left: 1px solid #e5e7eb;
+          overflow: hidden;
         }
 
         .header {
@@ -502,7 +577,7 @@ export default function Home() {
         .feed-source {
           display: inline-block;
           padding: 6px 12px;
-          background: #002855;
+          background: #000000;
           color: white;
           border-radius: 6px;
           font-size: 11px;
@@ -510,6 +585,10 @@ export default function Home() {
           margin-bottom: 12px;
           letter-spacing: 0.5px;
           text-transform: uppercase;
+        }
+
+        .feed-source.bloomberg {
+          background: #000000;
         }
 
         .feed-source.reuters {
