@@ -12,7 +12,7 @@ const parser = new Parser({
 
 const FEEDS = {
   bloomberg: 'https://feeds.bloomberg.com/technology/news.rss',
-  reuters: 'https://news.google.com/rss/search?q=reuters+technology&hl=en-US&gl=US&ceid=US:en',
+  reuters: 'https://news.google.com/rss/search?q=reuters+business&hl=en-US&gl=US&ceid=US:en',
   digitimes: 'https://www.digitimes.com/rss/daily.xml'
 };
 
@@ -74,13 +74,13 @@ export default async function handler(req, res) {
             link: item.link || '',
             pubDate: pubDate,
             source: 'reuters',
-            sourceName: 'Reuters Technology'
+            sourceName: 'Reuters Business'
           });
         }
       });
     } catch (error) {
       console.error('Error fetching Reuters feed:', error.message);
-      errors.push({ source: 'Reuters Technology', error: error.message });
+      errors.push({ source: 'Reuters Business', error: error.message });
     }
 
     // Fetch DigiTimes Asia feed
