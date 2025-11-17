@@ -5,7 +5,7 @@ const parser = new Parser();
 const FEEDS = {
   bloomberg: 'https://feeds.bloomberg.com/technology/news.rss',
   reuters: 'https://feeds.reuters.com/reuters/technologyNews',
-  digitimes: 'https://www.digitimes.com/rss/asia.xml'
+  digitimes: 'https://www.digitimes.com/rss/daily.xml'
 };
 
 export default async function handler(req, res) {
