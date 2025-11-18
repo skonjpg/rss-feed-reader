@@ -3,6 +3,7 @@ import Head from 'next/head';
 
 export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
+  const [approvedArticles, setApprovedArticles] = useState([]);
   const [notes, setNotes] = useState('');
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,9 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    // Load feeds on mount
+    // Load feeds and approved articles on mount
     loadFeeds();
+    loadApprovedArticles();
   }, []);
 
   const showStatus = (message, duration = 3000) => {
@@ -21,19 +23,36 @@ export default function Home() {
     setTimeout(() => setStatusMessage(''), duration);
   };
 
+  const loadApprovedArticles = async () => {
+    try {
+      const response = await fetch('/api/articles/approved');
+      if (!response.ok) throw new Error('Failed to fetch approved articles');
+
+      const data = await response.json();
+      setApprovedArticles(data.articles || []);
+    } catch (error) {
+      console.error('Error loading approved articles:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
   const loadFeeds = async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/feeds');
       if (!response.ok) throw new Error('Failed to fetch feeds');
-      
+
       const data = await response.json();
-      const items = data.map((item, index) => ({
-        ...item,
-        id: Date.now() + index,
-        approved: false
-      }));
-      
+      const items = data.map((item, index) => {
+        // Check if this article is already approved (match by link)
+        const isApproved = approvedArticles.some(approved => approved.link === item.link);
+        return {
+          ...item,
+          id: Date.now() + index,
+          approved: isApproved
+        };
+      });
+
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
     } catch (error) {
@@ -44,12 +63,41 @@ export default function Home() {
     }
   };
 
-  const approveStory = (item) => {
+  const approveStory = async (item) => {
+    // Optimistically update UI
     const updatedItems = feedItems.map(i =>
       i.id === item.id ? { ...i, approved: true } : i
     );
     setFeedItems(updatedItems);
-    showStatus('✅ Story approved');
+
+    try {
+      const response = await fetch('/api/articles/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ article: item })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showStatus('✅ Story approved globally');
+        // Add to approved articles list
+        setApprovedArticles([data.article, ...approvedArticles]);
+      } else if (response.status === 409) {
+        // Already approved
+        showStatus('ℹ️ Article already approved');
+      } else {
+        throw new Error(data.error || 'Failed to approve article');
+      }
+    } catch (error) {
+      console.error('Error approving article:', error);
+      showStatus('❌ Error: ' + error.message);
+      // Revert optimistic update on error
+      const revertedItems = feedItems.map(i =>
+        i.id === item.id ? { ...i, approved: false } : i
+      );
+      setFeedItems(revertedItems);
+    }
   };
 
   const summarizeWithAI = async () => {
