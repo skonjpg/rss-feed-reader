@@ -11,6 +11,7 @@ export default function Home() {
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'approved'
 
   useEffect(() => {
     // Load feeds and approved articles on mount
@@ -63,38 +64,59 @@ export default function Home() {
     }
   };
 
-  const approveStory = async (item) => {
+  const toggleApproval = async (item) => {
+    const isCurrentlyApproved = item.approved;
+
     // Optimistically update UI
     const updatedItems = feedItems.map(i =>
-      i.id === item.id ? { ...i, approved: true } : i
+      i.id === item.id ? { ...i, approved: !isCurrentlyApproved } : i
     );
     setFeedItems(updatedItems);
 
     try {
-      const response = await fetch('/api/articles/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article: item })
-      });
+      if (isCurrentlyApproved) {
+        // Unapprove the article
+        const response = await fetch('/api/articles/unapprove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link: item.link })
+        });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        showStatus('✅ Story approved globally');
-        // Add to approved articles list
-        setApprovedArticles([data.article, ...approvedArticles]);
-      } else if (response.status === 409) {
-        // Already approved
-        showStatus('ℹ️ Article already approved');
+        if (response.ok) {
+          showStatus('✅ Article unapproved');
+          // Remove from approved articles list
+          setApprovedArticles(approvedArticles.filter(a => a.link !== item.link));
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to unapprove article');
+        }
       } else {
-        throw new Error(data.error || 'Failed to approve article');
+        // Approve the article
+        const response = await fetch('/api/articles/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ article: item })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showStatus('✅ Story approved globally');
+          // Add to approved articles list
+          setApprovedArticles([data.article, ...approvedArticles]);
+        } else if (response.status === 409) {
+          // Already approved
+          showStatus('ℹ️ Article already approved');
+        } else {
+          throw new Error(data.error || 'Failed to approve article');
+        }
       }
     } catch (error) {
-      console.error('Error approving article:', error);
+      console.error('Error toggling approval:', error);
       showStatus('❌ Error: ' + error.message);
       // Revert optimistic update on error
       const revertedItems = feedItems.map(i =>
-        i.id === item.id ? { ...i, approved: false } : i
+        i.id === item.id ? { ...i, approved: isCurrentlyApproved } : i
       );
       setFeedItems(revertedItems);
     }
@@ -246,6 +268,20 @@ export default function Home() {
           </div>
 
           <div className="feed-controls">
+            <div className="tabs">
+              <button
+                className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveTab('all')}
+              >
+                All Articles ({sortedItems.length})
+              </button>
+              <button
+                className={`tab ${activeTab === 'approved' ? 'active' : ''}`}
+                onClick={() => setActiveTab('approved')}
+              >
+                Approved ({approvedArticles.length})
+              </button>
+            </div>
             <button onClick={loadFeeds} disabled={loading} className="btn-primary">
               {loading ? 'Loading...' : 'Refresh Feeds'}
             </button>
@@ -254,37 +290,74 @@ export default function Home() {
           <div className="feed-list">
             {loading ? (
               <div className="loading">Loading feeds</div>
-            ) : sortedItems.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📭</div>
-                <div className="empty-state-text">No feed items found.<br />Click "Refresh Feeds" to load.</div>
-              </div>
-            ) : (
-              sortedItems.map((item) => (
-                <div key={item.id} className={`feed-item ${item.approved ? 'approved' : ''}`}>
-                  <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                  <div className="feed-title">{item.title}</div>
-                  <div className="feed-description">{cleanDescription(item.description)}</div>
-                  <div className="feed-meta">
-                    <span className="feed-date">{formatDate(item.pubDate)}</span>
-                    <div className="feed-actions">
-                      <button
-                        className="btn-visit"
-                        onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                      >
-                        View Article
-                      </button>
-                      <button
-                        className={`btn-approve ${item.approved ? 'approved' : ''}`}
-                        onClick={() => approveStory(item)}
-                        disabled={item.approved}
-                      >
-                        {item.approved ? 'Approved' : 'Approve'}
-                      </button>
+            ) : activeTab === 'all' ? (
+              sortedItems.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📭</div>
+                  <div className="empty-state-text">No feed items found.<br />Click "Refresh Feeds" to load.</div>
+                </div>
+              ) : (
+                sortedItems.map((item) => (
+                  <div key={item.id} className={`feed-item ${item.approved ? 'approved' : ''}`}>
+                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-description">{cleanDescription(item.description)}</div>
+                    <div className="feed-meta">
+                      <span className="feed-date">{formatDate(item.pubDate)}</span>
+                      <div className="feed-actions">
+                        <button
+                          className="btn-visit"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                        >
+                          View Article
+                        </button>
+                        <button
+                          className={`btn-approve ${item.approved ? 'approved' : ''}`}
+                          onClick={() => toggleApproval(item)}
+                        >
+                          {item.approved ? 'Unapprove' : 'Approve'}
+                        </button>
+                      </div>
                     </div>
                   </div>
+                ))
+              )
+            ) : (
+              approvedArticles.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">✓</div>
+                  <div className="empty-state-text">No approved articles yet.<br />Switch to "All Articles" tab to approve some.</div>
                 </div>
-              ))
+              ) : (
+                approvedArticles.map((item) => (
+                  <div key={item.dbId || item.id} className="feed-item approved">
+                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-description">{cleanDescription(item.description)}</div>
+                    <div className="feed-meta">
+                      <span className="feed-date">{formatDate(item.pubDate)}</span>
+                      <div className="feed-actions">
+                        <button
+                          className="btn-visit"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                        >
+                          View Article
+                        </button>
+                        <button
+                          className="btn-approve approved"
+                          onClick={() => {
+                            // Create a temporary item for unapproval
+                            const tempItem = { ...item, id: item.dbId, approved: true };
+                            toggleApproval(tempItem);
+                          }}
+                        >
+                          Unapprove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
             )}
           </div>
         </div>
@@ -424,7 +497,38 @@ export default function Home() {
           background: #ffffff;
           border-bottom: 1px solid #e1e8ed;
           display: flex;
+          justify-content: space-between;
+          align-items: center;
           gap: 12px;
+        }
+
+        .tabs {
+          display: flex;
+          gap: 8px;
+        }
+
+        .tab {
+          padding: 10px 20px;
+          background: transparent;
+          color: #64748b;
+          border: 2px solid #e1e8ed;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .tab:hover {
+          border-color: #002855;
+          color: #002855;
+        }
+
+        .tab.active {
+          background: #002855;
+          color: white;
+          border-color: #002855;
         }
 
         .btn-primary {
@@ -598,8 +702,14 @@ export default function Home() {
         }
 
         .btn-approve.approved {
-          background: #94a3b8;
-          cursor: not-allowed;
+          background: #dc2626;
+          cursor: pointer;
+        }
+
+        .btn-approve.approved:hover {
+          background: #b91c1c;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(220,38,38,0.3);
         }
 
         .btn-visit {
