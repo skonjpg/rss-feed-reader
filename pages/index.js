@@ -4,6 +4,7 @@ import Head from 'next/head';
 export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
   const [approvedArticles, setApprovedArticles] = useState([]);
+  const [flaggedArticles, setFlaggedArticles] = useState([]);
   const [notes, setNotes] = useState('');
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -11,11 +12,12 @@ export default function Home() {
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'approved'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', or 'approved'
 
   useEffect(() => {
-    // Load feeds and approved articles on mount
+    // Load feeds, flagged, and approved articles on mount
     loadFeeds();
+    loadFlaggedArticles();
     loadApprovedArticles();
   }, []);
 
@@ -37,6 +39,19 @@ export default function Home() {
     }
   };
 
+  const loadFlaggedArticles = async () => {
+    try {
+      const response = await fetch('/api/articles/flagged');
+      if (!response.ok) throw new Error('Failed to fetch flagged articles');
+
+      const data = await response.json();
+      setFlaggedArticles(data.articles || []);
+    } catch (error) {
+      console.error('Error loading flagged articles:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
   const loadFeeds = async () => {
     setLoading(true);
     try {
@@ -45,12 +60,14 @@ export default function Home() {
 
       const data = await response.json();
       const items = data.map((item, index) => {
-        // Check if this article is already approved (match by link)
+        // Check if this article is already approved or flagged (match by link)
         const isApproved = approvedArticles.some(approved => approved.link === item.link);
+        const isFlagged = flaggedArticles.some(flagged => flagged.link === item.link);
         return {
           ...item,
           id: Date.now() + index,
-          approved: isApproved
+          approved: isApproved,
+          flagged: isFlagged
         };
       });
 
@@ -117,6 +134,64 @@ export default function Home() {
       // Revert optimistic update on error
       const revertedItems = feedItems.map(i =>
         i.id === item.id ? { ...i, approved: isCurrentlyApproved } : i
+      );
+      setFeedItems(revertedItems);
+    }
+  };
+
+  const toggleFlag = async (item) => {
+    const isCurrentlyFlagged = item.flagged;
+
+    // Optimistically update UI
+    const updatedItems = feedItems.map(i =>
+      i.id === item.id ? { ...i, flagged: !isCurrentlyFlagged } : i
+    );
+    setFeedItems(updatedItems);
+
+    try {
+      if (isCurrentlyFlagged) {
+        // Unflag the article
+        const response = await fetch('/api/articles/unflag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link: item.link })
+        });
+
+        if (response.ok) {
+          showStatus('✅ Article unflagged');
+          // Remove from flagged articles list
+          setFlaggedArticles(flaggedArticles.filter(a => a.link !== item.link));
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to unflag article');
+        }
+      } else {
+        // Flag the article
+        const response = await fetch('/api/articles/flag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ article: item })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showStatus('🚩 Article flagged for approval');
+          // Add to flagged articles list
+          setFlaggedArticles([data.article, ...flaggedArticles]);
+        } else if (response.status === 409) {
+          // Already flagged
+          showStatus('ℹ️ Article already flagged');
+        } else {
+          throw new Error(data.error || 'Failed to flag article');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling flag:', error);
+      showStatus('❌ Error: ' + error.message);
+      // Revert optimistic update on error
+      const revertedItems = feedItems.map(i =>
+        i.id === item.id ? { ...i, flagged: isCurrentlyFlagged } : i
       );
       setFeedItems(revertedItems);
     }
@@ -276,6 +351,12 @@ export default function Home() {
                 All Articles ({sortedItems.length})
               </button>
               <button
+                className={`tab ${activeTab === 'flagged' ? 'active' : ''}`}
+                onClick={() => setActiveTab('flagged')}
+              >
+                Flagged ({flaggedArticles.length})
+              </button>
+              <button
                 className={`tab ${activeTab === 'approved' ? 'active' : ''}`}
                 onClick={() => setActiveTab('approved')}
               >
@@ -312,10 +393,60 @@ export default function Home() {
                           View Article
                         </button>
                         <button
+                          className={`btn-flag ${item.flagged ? 'flagged' : ''}`}
+                          onClick={() => toggleFlag(item)}
+                        >
+                          {item.flagged ? 'Unflag' : 'Flag'}
+                        </button>
+                        <button
                           className={`btn-approve ${item.approved ? 'approved' : ''}`}
                           onClick={() => toggleApproval(item)}
                         >
                           {item.approved ? 'Unapprove' : 'Approve'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : activeTab === 'flagged' ? (
+              flaggedArticles.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">🚩</div>
+                  <div className="empty-state-text">No flagged articles yet.<br />Switch to "All Articles" tab to flag some.</div>
+                </div>
+              ) : (
+                flaggedArticles.map((item) => (
+                  <div key={item.dbId || item.id} className="feed-item flagged">
+                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-description">{cleanDescription(item.description)}</div>
+                    <div className="feed-meta">
+                      <span className="feed-date">{formatDate(item.pubDate)}</span>
+                      <div className="feed-actions">
+                        <button
+                          className="btn-visit"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                        >
+                          View Article
+                        </button>
+                        <button
+                          className="btn-flag flagged"
+                          onClick={() => {
+                            const tempItem = { ...item, id: item.dbId, flagged: true };
+                            toggleFlag(tempItem);
+                          }}
+                        >
+                          Unflag
+                        </button>
+                        <button
+                          className="btn-approve"
+                          onClick={() => {
+                            const tempItem = { ...item, id: item.dbId, flagged: true };
+                            toggleApproval(tempItem);
+                          }}
+                        >
+                          Approve
                         </button>
                       </div>
                     </div>
@@ -346,7 +477,6 @@ export default function Home() {
                         <button
                           className="btn-approve approved"
                           onClick={() => {
-                            // Create a temporary item for unapproval
                             const tempItem = { ...item, id: item.dbId, approved: true };
                             toggleApproval(tempItem);
                           }}
@@ -621,6 +751,11 @@ export default function Home() {
           background: #f0fdf4;
         }
 
+        .feed-item.flagged {
+          border-left: 4px solid #f59e0b;
+          background: #fffbeb;
+        }
+
         .feed-source {
           display: inline-block;
           padding: 6px 12px;
@@ -710,6 +845,36 @@ export default function Home() {
           background: #b91c1c;
           transform: translateY(-1px);
           box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+        }
+
+        .btn-flag {
+          padding: 8px 16px;
+          background: #f59e0b;
+          color: white;
+          border: none;
+          border-radius: 7px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-flag:hover:not(:disabled) {
+          background: #d97706;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(245,158,11,0.3);
+        }
+
+        .btn-flag.flagged {
+          background: #94a3b8;
+          cursor: pointer;
+        }
+
+        .btn-flag.flagged:hover {
+          background: #64748b;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(148,163,184,0.3);
         }
 
         .btn-visit {
