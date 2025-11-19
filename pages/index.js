@@ -93,9 +93,9 @@ export default function Home() {
     try {
       showStatus('🤖 Claude is analyzing articles...', 10000);
 
-      // Add timeout to the fetch request (30 seconds)
+      // Add timeout to the fetch request (45 seconds)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const response = await fetch('/api/ml/score-articles', {
         method: 'POST',
