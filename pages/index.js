@@ -84,13 +84,15 @@ export default function Home() {
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
 
-      // Score only NEW articles (not in approved, flagged, or junk)
-      // This happens after state is updated, so we filter based on current state
+      // Score only NEW articles that:
+      // 1. Are not in approved, flagged, or junk tabs
+      // 2. Don't already have a confidence score
       const newArticles = items.filter(item => {
         const isApproved = approvedArticles.some(a => a.link === item.link);
         const isFlagged = flaggedArticles.some(f => f.link === item.link);
         const isJunked = junkArticles.some(j => j.link === item.link);
-        return !isApproved && !isFlagged && !isJunked;
+        const hasScore = confidenceScores[item.link] !== undefined;
+        return !isApproved && !isFlagged && !isJunked && !hasScore;
       });
 
       if (newArticles.length > 0) {
