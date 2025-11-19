@@ -557,7 +557,7 @@ export default function Home() {
         const interval = setInterval(() => {
           console.log('Auto-refreshing feeds...');
           loadFeeds(null, true);
-        }, 120000); // 2 minutes
+        }, 60000); // 1 minute
         setAutoRefreshInterval(interval);
       }
     } else if (scoredCount === totalCount && totalCount > 0) {
