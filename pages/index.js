@@ -102,8 +102,9 @@ export default function Home() {
   const loadFeeds = async (existingPredictions = null, forceReloadLists = false) => {
     setLoading(true);
     try {
-      // If called from Refresh button, reload all lists first
+      // If called from Refresh button, run cleanup and reload all lists first
       if (forceReloadLists) {
+        await fetch('/api/cleanup/old-articles', { method: 'POST' });
         await Promise.all([
           loadFlaggedArticles(),
           loadApprovedArticles(),
