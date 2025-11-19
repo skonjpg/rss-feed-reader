@@ -606,6 +606,10 @@ export default function Home() {
                 Junk ({junkArticles.length})
               </button>
             </div>
+            <div className="ml-stats">
+              <span className="ml-stats-icon">🤖</span>
+              <span className="ml-stats-text">{Object.keys(confidenceScores).length} Scored</span>
+            </div>
             <button onClick={loadFeeds} disabled={loading} className="btn-primary">
               {loading ? 'Loading...' : 'Refresh Feeds'}
             </button>
@@ -972,6 +976,27 @@ export default function Home() {
           background: #002855;
           color: white;
           border-color: #002855;
+        }
+
+        .ml-stats {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.25);
+        }
+
+        .ml-stats-icon {
+          font-size: 16px;
+        }
+
+        .ml-stats-text {
+          letter-spacing: 0.3px;
         }
 
         .btn-primary {
