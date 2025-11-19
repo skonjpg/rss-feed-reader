@@ -480,7 +480,7 @@ export default function Home() {
                         {confidence !== undefined && (
                           <span
                             className={`confidence-badge confidence-${getConfidenceLevel(confidence)}`}
-                            title={scoreData.reasoning}
+                            title={scoreData.reasoning || 'AI confidence score'}
                           >
                             {confidence >= 80 ? '🎯' : confidence >= 60 ? '👍' : '📊'} {confidence}%
                           </span>
