@@ -17,6 +17,8 @@ export default function Home() {
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
+  const [manualArticleUrl, setManualArticleUrl] = useState('');
+  const [addingManualArticle, setAddingManualArticle] = useState(false);
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -451,6 +453,91 @@ export default function Home() {
     }
   };
 
+  const addManualArticle = async () => {
+    if (!manualArticleUrl.trim()) {
+      showStatus('⚠️ Please enter a URL');
+      return;
+    }
+
+    setAddingManualArticle(true);
+    try {
+      showStatus('🔍 Fetching article information...');
+
+      // Fetch article metadata
+      const metadataResponse = await fetch('/api/articles/fetch-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: manualArticleUrl.trim() })
+      });
+
+      if (!metadataResponse.ok) {
+        const errorData = await metadataResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch article metadata');
+      }
+
+      const metadataResult = await metadataResponse.json();
+      const article = metadataResult.article;
+
+      // Add to flagged articles
+      const flagResponse = await fetch('/api/articles/flag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article: {
+            ...article,
+            id: Date.now().toString()
+          }
+        })
+      });
+
+      if (!flagResponse.ok) {
+        const errorData = await flagResponse.json();
+        if (flagResponse.status === 409) {
+          showStatus('ℹ️ Article already flagged');
+          setManualArticleUrl('');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to flag article');
+      }
+
+      const flagData = await flagResponse.json();
+      setFlaggedArticles([flagData.article, ...flaggedArticles]);
+      setManualArticleUrl('');
+
+      // Score the article with ML
+      showStatus('🤖 Scoring article with Claude...');
+      const scoreResponse = await fetch('/api/ml/score-articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articles: [article] })
+      });
+
+      if (scoreResponse.ok) {
+        const scoreData = await scoreResponse.json();
+        if (scoreData.success && scoreData.articles.length > 0) {
+          const scored = scoreData.articles[0];
+          setConfidenceScores(prevScores => ({
+            ...prevScores,
+            [scored.link]: {
+              confidence: scored.confidence,
+              reasoning: scored.reasoning
+            }
+          }));
+          showStatus(`✅ Article added with ${scored.confidence}% confidence!`);
+        } else {
+          showStatus('✅ Article added to flagged!');
+        }
+      } else {
+        showStatus('✅ Article added to flagged!');
+      }
+    } catch (error) {
+      console.error('Error adding manual article:', error);
+      showStatus(`❌ ${error.message}`);
+    } finally {
+      setAddingManualArticle(false);
+    }
+  };
+
   const summarizeWithAI = async () => {
     if (!notes.trim()) {
       showStatus('⚠️ Please enter some notes to summarize');
@@ -763,13 +850,36 @@ export default function Home() {
                 })
               )
             ) : activeTab === 'flagged' ? (
-              flaggedArticles.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">🚩</div>
-                  <div className="empty-state-text">No flagged articles yet.<br />Switch to "All Articles" tab to flag some.</div>
+              <>
+                <div className="manual-article-input">
+                  <input
+                    type="url"
+                    placeholder="Paste article URL to add manually..."
+                    value={manualArticleUrl}
+                    onChange={(e) => setManualArticleUrl(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !addingManualArticle) {
+                        addManualArticle();
+                      }
+                    }}
+                    disabled={addingManualArticle}
+                    className="manual-article-url-input"
+                  />
+                  <button
+                    onClick={addManualArticle}
+                    disabled={addingManualArticle || !manualArticleUrl.trim()}
+                    className="btn-add-manual"
+                  >
+                    {addingManualArticle ? 'Adding...' : 'Add Article'}
+                  </button>
                 </div>
-              ) : (
-                flaggedArticles.map((item) => (
+                {flaggedArticles.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🚩</div>
+                    <div className="empty-state-text">No flagged articles yet.<br />Add manually above or switch to "All Articles" tab.</div>
+                  </div>
+                ) : (
+                  flaggedArticles.map((item) => (
                   <div key={item.dbId || item.id} className="feed-item flagged">
                     <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
                     <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
@@ -814,7 +924,8 @@ export default function Home() {
                     </div>
                   </div>
                 ))
-              )
+                )}
+              </>
             ) : activeTab === 'approved' ? (
               approvedArticles.length === 0 ? (
                 <div className="empty-state">
@@ -1146,6 +1257,69 @@ export default function Home() {
 
         .feed-list::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
+        }
+
+        .manual-article-input {
+          display: flex;
+          gap: 12px;
+          padding: 20px;
+          background: white;
+          border: 2px solid #e1e8ed;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 4px rgba(0,40,85,0.06);
+        }
+
+        .manual-article-url-input {
+          flex: 1;
+          padding: 12px 16px;
+          border: 2px solid #e1e8ed;
+          border-radius: 8px;
+          font-size: 14px;
+          font-family: 'Inter', sans-serif;
+          color: #0f172a;
+          transition: all 0.2s;
+        }
+
+        .manual-article-url-input:focus {
+          outline: none;
+          border-color: #002855;
+          box-shadow: 0 0 0 3px rgba(0, 40, 85, 0.1);
+        }
+
+        .manual-article-url-input:disabled {
+          background: #f9fafb;
+          cursor: not-allowed;
+        }
+
+        .manual-article-url-input::placeholder {
+          color: #94a3b8;
+        }
+
+        .btn-add-manual {
+          padding: 12px 24px;
+          background: #f59e0b;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+          white-space: nowrap;
+        }
+
+        .btn-add-manual:hover:not(:disabled) {
+          background: #d97706;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(245,158,11,0.25);
+        }
+
+        .btn-add-manual:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
         }
 
         .feed-item {
