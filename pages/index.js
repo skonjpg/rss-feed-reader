@@ -93,9 +93,9 @@ export default function Home() {
     try {
       showStatus('🤖 Claude is analyzing articles...', 10000);
 
-      // Add timeout to the fetch request (30 seconds)
+      // Add timeout to the fetch request (45 seconds)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const response = await fetch('/api/ml/score-articles', {
         method: 'POST',
@@ -389,13 +389,17 @@ export default function Home() {
   };
 
   // Compute approved/flagged status dynamically based on current state
-  const sortedItems = [...feedItems].map(item => ({
-    ...item,
-    approved: approvedArticles.some(a => a.link === item.link),
-    flagged: flaggedArticles.some(f => f.link === item.link)
-  })).sort((a, b) =>
-    new Date(b.pubDate) - new Date(a.pubDate)
-  );
+  // Filter out approved and flagged articles from "All Articles" tab
+  const sortedItems = [...feedItems]
+    .map(item => ({
+      ...item,
+      approved: approvedArticles.some(a => a.link === item.link),
+      flagged: flaggedArticles.some(f => f.link === item.link)
+    }))
+    .filter(item => !item.approved && !item.flagged)
+    .sort((a, b) =>
+      new Date(b.pubDate) - new Date(a.pubDate)
+    );
 
   return (
     <>

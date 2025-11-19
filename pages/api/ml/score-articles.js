@@ -24,11 +24,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Articles array required' });
     }
 
-    // Limit to 50 most recent articles to avoid timeout
-    // Sort by pubDate and take the 50 most recent
+    // Limit to 20 most recent articles to avoid timeout
+    // Sort by pubDate and take the 20 most recent
     const sortedArticles = [...articles].sort((a, b) =>
       new Date(b.pubDate) - new Date(a.pubDate)
-    ).slice(0, 50);
+    ).slice(0, 20);
 
     console.log(`Scoring ${sortedArticles.length} most recent articles with Claude...`);
 
