@@ -20,8 +20,8 @@ export default function Home() {
   useEffect(() => {
     // Load predictions first, then feeds, flagged, approved, and junk articles on mount
     const loadAll = async () => {
-      await loadPredictions(); // Wait for predictions to load before loading feeds
-      loadFeeds();
+      const predictions = await loadPredictions(); // Get predictions
+      loadFeeds(predictions); // Pass predictions to loadFeeds
       loadFlaggedArticles();
       loadApprovedArticles();
       loadJunkArticles();
@@ -79,14 +79,17 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to fetch predictions');
 
       const data = await response.json();
-      setConfidenceScores(data.predictions || {});
+      const predictions = data.predictions || {};
+      setConfidenceScores(predictions);
+      return predictions; // Return predictions so caller can use them immediately
     } catch (error) {
       console.error('Error loading predictions:', error);
       // Don't show error to user, just log it
+      return {}; // Return empty object on error
     }
   };
 
-  const loadFeeds = async () => {
+  const loadFeeds = async (existingPredictions = null) => {
     setLoading(true);
     try {
       const response = await fetch('/api/feeds');
@@ -101,6 +104,9 @@ export default function Home() {
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
 
+      // Use existingPredictions if provided (from initial load), otherwise use state
+      const scoresToCheck = existingPredictions !== null ? existingPredictions : confidenceScores;
+
       // Score only NEW articles that:
       // 1. Are not in approved, flagged, or junk tabs
       // 2. Don't already have a confidence score
@@ -110,7 +116,7 @@ export default function Home() {
           const isApproved = approvedArticles.some(a => a.link === item.link);
           const isFlagged = flaggedArticles.some(f => f.link === item.link);
           const isJunked = junkArticles.some(j => j.link === item.link);
-          const hasScore = confidenceScores[item.link] !== undefined;
+          const hasScore = scoresToCheck[item.link] !== undefined;
           return !isApproved && !isFlagged && !isJunked && !hasScore;
         })
         .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
