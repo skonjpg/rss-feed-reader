@@ -84,14 +84,19 @@ export default function Home() {
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
 
-      // Score only NEW articles (not in approved, flagged, or junk)
-      // This happens after state is updated, so we filter based on current state
-      const newArticles = items.filter(item => {
-        const isApproved = approvedArticles.some(a => a.link === item.link);
-        const isFlagged = flaggedArticles.some(f => f.link === item.link);
-        const isJunked = junkArticles.some(j => j.link === item.link);
-        return !isApproved && !isFlagged && !isJunked;
-      });
+      // Score only NEW articles that:
+      // 1. Are not in approved, flagged, or junk tabs
+      // 2. Don't already have a confidence score
+      // 3. Prioritize newest articles (sort by date, most recent first)
+      const newArticles = items
+        .filter(item => {
+          const isApproved = approvedArticles.some(a => a.link === item.link);
+          const isFlagged = flaggedArticles.some(f => f.link === item.link);
+          const isJunked = junkArticles.some(j => j.link === item.link);
+          const hasScore = confidenceScores[item.link] !== undefined;
+          return !isApproved && !isFlagged && !isJunked && !hasScore;
+        })
+        .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
       if (newArticles.length > 0) {
         scoreArticlesWithML(newArticles);
@@ -143,7 +148,11 @@ export default function Home() {
             reasoning: article.reasoning
           };
         });
-        setConfidenceScores(scores);
+        // Merge with existing scores instead of replacing them
+        setConfidenceScores(prevScores => ({
+          ...prevScores,
+          ...scores
+        }));
 
         if (data.autoFlagged > 0) {
           showStatus(`✨ Auto-flagged ${data.autoFlagged} high-confidence articles!`, 5000);
@@ -152,7 +161,7 @@ export default function Home() {
           const scoreMessage = data.total > data.scored
             ? `✅ Analyzed ${data.scored} of ${data.total} most recent articles`
             : `✅ Analyzed ${data.scored} articles with Claude`;
-          showStatus(scoreMessage, 3000);
+          showStatus(scoreMessage, 10000);
         }
       }
     } catch (error) {
