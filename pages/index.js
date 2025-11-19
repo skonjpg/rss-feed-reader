@@ -148,7 +148,11 @@ export default function Home() {
             reasoning: article.reasoning
           };
         });
-        setConfidenceScores(scores);
+        // Merge with existing scores instead of replacing them
+        setConfidenceScores(prevScores => ({
+          ...prevScores,
+          ...scores
+        }));
 
         if (data.autoFlagged > 0) {
           showStatus(`✨ Auto-flagged ${data.autoFlagged} high-confidence articles!`, 5000);
