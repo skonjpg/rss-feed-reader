@@ -91,13 +91,28 @@ export default function Home() {
 
     setScoringInProgress(true);
     try {
-      showStatus('🤖 Claude is analyzing articles...', 5000);
+      showStatus('🤖 Claude is analyzing articles...', 10000);
+
+      // Add timeout to the fetch request (30 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch('/api/ml/score-articles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articles })
+        body: JSON.stringify({ articles }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 504) {
+          showStatus('⏱️ Scoring timed out - too many articles', 4000);
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -116,12 +131,18 @@ export default function Home() {
           showStatus(`✨ Auto-flagged ${data.autoFlagged} high-confidence articles!`, 5000);
           loadFlaggedArticles(); // Reload flagged list
         } else {
-          showStatus(`✅ Analyzed ${data.scored} articles with Claude`, 3000);
+          const scoreMessage = data.total > data.scored
+            ? `✅ Analyzed ${data.scored} of ${data.total} most recent articles`
+            : `✅ Analyzed ${data.scored} articles with Claude`;
+          showStatus(scoreMessage, 3000);
         }
       }
     } catch (error) {
       console.error('ML scoring error:', error);
-      // Don't show error to user, scoring is optional
+      if (error.name === 'AbortError') {
+        showStatus('⏱️ Scoring timed out - try again later', 4000);
+      }
+      // Don't show other errors to user, scoring is optional
     } finally {
       setScoringInProgress(false);
     }

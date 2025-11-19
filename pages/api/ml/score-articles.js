@@ -1,6 +1,17 @@
 import { scoreBatchArticles } from '../../../lib/ml-service';
 import { supabase } from '../../../lib/supabase';
 
+// Increase timeout for this API route (in seconds)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb',
+    },
+    responseLimit: false,
+  },
+  maxDuration: 60, // 60 seconds for serverless function
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -13,10 +24,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Articles array required' });
     }
 
-    console.log(`Scoring ${articles.length} articles with Claude...`);
+    // Limit to 20 most recent articles to avoid timeout
+    // Sort by pubDate and take the 20 most recent
+    const sortedArticles = [...articles].sort((a, b) =>
+      new Date(b.pubDate) - new Date(a.pubDate)
+    ).slice(0, 20);
+
+    console.log(`Scoring ${sortedArticles.length} most recent articles with Claude...`);
 
     // Score articles using Claude
-    const scoredArticles = await scoreBatchArticles(articles);
+    const scoredArticles = await scoreBatchArticles(sortedArticles);
 
     // Auto-flag articles with high confidence
     const autoFlagged = [];
@@ -73,6 +90,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       scored: scoredArticles.length,
+      total: articles.length,
       autoFlagged: autoFlagged.length,
       autoFlaggedArticles: autoFlagged,
       articles: scoredArticles.map(a => ({
