@@ -18,11 +18,15 @@ export default function Home() {
   const [scoringInProgress, setScoringInProgress] = useState(false);
 
   useEffect(() => {
-    // Load feeds, flagged, approved, and junk articles on mount
-    loadFeeds();
-    loadFlaggedArticles();
-    loadApprovedArticles();
-    loadJunkArticles();
+    // Load predictions first, then feeds, flagged, approved, and junk articles on mount
+    const loadAll = async () => {
+      await loadPredictions(); // Wait for predictions to load before loading feeds
+      loadFeeds();
+      loadFlaggedArticles();
+      loadApprovedArticles();
+      loadJunkArticles();
+    };
+    loadAll();
   }, []);
 
   const showStatus = (message, duration = 3000) => {
@@ -65,6 +69,19 @@ export default function Home() {
       setJunkArticles(data.articles || []);
     } catch (error) {
       console.error('Error loading junk articles:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
+  const loadPredictions = async () => {
+    try {
+      const response = await fetch('/api/articles/predictions');
+      if (!response.ok) throw new Error('Failed to fetch predictions');
+
+      const data = await response.json();
+      setConfidenceScores(data.predictions || {});
+    } catch (error) {
+      console.error('Error loading predictions:', error);
       // Don't show error to user, just log it
     }
   };
