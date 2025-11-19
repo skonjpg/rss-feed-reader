@@ -16,12 +16,12 @@ const FEEDS = {
   digitimes: 'https://www.digitimes.com/rss/daily.xml'
 };
 
-// Helper function to check if date is from current month
-function isCurrentMonth(dateString) {
+// Helper function to check if date is within last 12 days
+function isWithinLast12Days(dateString) {
   const itemDate = new Date(dateString);
   const now = new Date();
-  return itemDate.getMonth() === now.getMonth() &&
-         itemDate.getFullYear() === now.getFullYear();
+  const daysDiff = (now - itemDate) / (1000 * 60 * 60 * 24);
+  return daysDiff <= 12;
 }
 
 export default async function handler(req, res) {
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       console.log(`Bloomberg feed fetched: ${bloombergFeed.items.length} items`);
       bloombergFeed.items.forEach(item => {
         const pubDate = item.pubDate || item.isoDate || new Date().toISOString();
-        if (isCurrentMonth(pubDate)) {
+        if (isWithinLast12Days(pubDate)) {
           results.push({
             title: item.title || 'No title',
             description: item.contentSnippet || item.content || '',
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       console.log(`Reuters feed fetched: ${reutersFeed.items.length} items`);
       reutersFeed.items.forEach(item => {
         const pubDate = item.pubDate || item.isoDate || new Date().toISOString();
-        if (isCurrentMonth(pubDate)) {
+        if (isWithinLast12Days(pubDate)) {
           results.push({
             title: item.title || 'No title',
             description: item.contentSnippet || item.content || '',
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
       console.log(`DigiTimes feed fetched: ${digitimesFeed.items.length} items`);
       digitimesFeed.items.forEach(item => {
         const pubDate = item.pubDate || item.isoDate || new Date().toISOString();
-        if (isCurrentMonth(pubDate)) {
+        if (isWithinLast12Days(pubDate)) {
           results.push({
             title: item.title || 'No title',
             description: item.contentSnippet || item.content || '',
