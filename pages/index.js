@@ -80,6 +80,7 @@ export default function Home() {
 
       const data = await response.json();
       const predictions = data.predictions || {};
+      console.log(`Loaded ${Object.keys(predictions).length} predictions from database`);
       setConfidenceScores(predictions);
       return predictions; // Return predictions so caller can use them immediately
     } catch (error) {
@@ -106,11 +107,13 @@ export default function Home() {
 
       // Use existingPredictions if provided (from initial load), otherwise use state
       const scoresToCheck = existingPredictions !== null ? existingPredictions : confidenceScores;
+      console.log(`Checking against ${Object.keys(scoresToCheck).length} existing scores`);
 
       // Score only NEW articles that:
       // 1. Are not in approved, flagged, or junk tabs
       // 2. Don't already have a confidence score
       // 3. Prioritize newest articles (sort by date, most recent first)
+      // 4. Limit to 20 articles per batch to avoid timeout
       const newArticles = items
         .filter(item => {
           const isApproved = approvedArticles.some(a => a.link === item.link);
@@ -119,7 +122,10 @@ export default function Home() {
           const hasScore = scoresToCheck[item.link] !== undefined;
           return !isApproved && !isFlagged && !isJunked && !hasScore;
         })
-        .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+        .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+        .slice(0, 20); // Only score 20 at a time
+
+      console.log(`Found ${newArticles.length} unscored articles (after filtering and limiting to 20)`);
 
       if (newArticles.length > 0) {
         scoreArticlesWithML(newArticles);
