@@ -76,23 +76,26 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to fetch feeds');
 
       const data = await response.json();
-      const items = data.map((item, index) => {
-        // Check if this article is already approved or flagged (match by link)
-        const isApproved = approvedArticles.some(approved => approved.link === item.link);
-        const isFlagged = flaggedArticles.some(flagged => flagged.link === item.link);
-        return {
-          ...item,
-          id: Date.now() + index,
-          approved: isApproved,
-          flagged: isFlagged
-        };
-      });
+      const items = data.map((item, index) => ({
+        ...item,
+        id: Date.now() + index,
+      }));
 
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
 
-      // Trigger ML scoring asynchronously (don't block UI)
-      scoreArticlesWithML(items);
+      // Score only NEW articles (not in approved, flagged, or junk)
+      // This happens after state is updated, so we filter based on current state
+      const newArticles = items.filter(item => {
+        const isApproved = approvedArticles.some(a => a.link === item.link);
+        const isFlagged = flaggedArticles.some(f => f.link === item.link);
+        const isJunked = junkArticles.some(j => j.link === item.link);
+        return !isApproved && !isFlagged && !isJunked;
+      });
+
+      if (newArticles.length > 0) {
+        scoreArticlesWithML(newArticles);
+      }
     } catch (error) {
       console.error('Error loading feeds:', error);
       showStatus('❌ Error loading feeds');
