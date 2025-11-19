@@ -295,10 +295,12 @@ export default function Home() {
 
   const toggleJunk = async (item) => {
     const isCurrentlyJunk = item.junked || junkArticles.some(j => j.link === item.link);
+    const isCurrentlyFlagged = item.flagged || flaggedArticles.some(f => f.link === item.link);
+    const isCurrentlyApproved = item.approved || approvedArticles.some(a => a.link === item.link);
 
     // Optimistically update UI - match by link instead of id
     const updatedItems = feedItems.map(i =>
-      i.link === item.link ? { ...i, junked: !isCurrentlyJunk } : i
+      i.link === item.link ? { ...i, junked: !isCurrentlyJunk, flagged: false, approved: false } : i
     );
     setFeedItems(updatedItems);
 
@@ -333,6 +335,32 @@ export default function Home() {
           showStatus('🗑️ Article marked as junk');
           // Add to junk articles list
           setJunkArticles([data.article, ...junkArticles]);
+
+          // If the article was flagged, automatically unflag it
+          if (isCurrentlyFlagged) {
+            const unflagResponse = await fetch('/api/articles/unflag', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ link: item.link })
+            });
+
+            if (unflagResponse.ok) {
+              setFlaggedArticles(flaggedArticles.filter(a => a.link !== item.link));
+            }
+          }
+
+          // If the article was approved, automatically unapprove it
+          if (isCurrentlyApproved) {
+            const unapproveResponse = await fetch('/api/articles/unapprove', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ link: item.link })
+            });
+
+            if (unapproveResponse.ok) {
+              setApprovedArticles(approvedArticles.filter(a => a.link !== item.link));
+            }
+          }
         } else if (response.status === 409) {
           // Already junked
           showStatus('ℹ️ Article already marked as junk');
@@ -1175,7 +1203,7 @@ export default function Home() {
 
         .btn-junk {
           padding: 8px 16px;
-          background: #6b7280;
+          background: #dc2626;
           color: white;
           border: none;
           border-radius: 7px;
@@ -1187,20 +1215,20 @@ export default function Home() {
         }
 
         .btn-junk:hover:not(:disabled) {
-          background: #4b5563;
+          background: #b91c1c;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(107,114,128,0.3);
+          box-shadow: 0 2px 6px rgba(220,38,38,0.3);
         }
 
         .btn-junk.junked {
-          background: #9ca3af;
+          background: #ef4444;
           cursor: pointer;
         }
 
         .btn-junk.junked:hover {
-          background: #6b7280;
+          background: #dc2626;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(107,114,128,0.3);
+          box-shadow: 0 2px 6px rgba(220,38,38,0.3);
         }
 
         .notes-header {
