@@ -16,6 +16,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', 'approved', or 'junk'
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -533,6 +534,48 @@ export default function Home() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging]);
+
+  // Auto-refresh every 2 minutes until all articles are scored
+  useEffect(() => {
+    // Calculate unscored articles
+    const allArticles = [...feedItems]
+      .map(item => ({
+        ...item,
+        approved: approvedArticles.some(a => a.link === item.link),
+        flagged: flaggedArticles.some(f => f.link === item.link),
+        junked: junkArticles.some(j => j.link === item.link)
+      }))
+      .filter(item => !item.approved && !item.flagged && !item.junked);
+
+    const scoredCount = allArticles.filter(item => confidenceScores[item.link] !== undefined).length;
+    const totalCount = allArticles.length;
+
+    // If there are unscored articles, set up auto-refresh
+    if (totalCount > 0 && scoredCount < totalCount && !scoringInProgress) {
+      if (!autoRefreshInterval) {
+        console.log(`Setting up auto-refresh: ${scoredCount}/${totalCount} scored`);
+        const interval = setInterval(() => {
+          console.log('Auto-refreshing feeds...');
+          loadFeeds(null, true);
+        }, 60000); // 1 minute
+        setAutoRefreshInterval(interval);
+      }
+    } else if (scoredCount === totalCount && totalCount > 0) {
+      // All articles are scored, clear the interval
+      if (autoRefreshInterval) {
+        console.log('All articles scored, stopping auto-refresh');
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
+  }, [feedItems, approvedArticles, flaggedArticles, junkArticles, confidenceScores, scoringInProgress]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
