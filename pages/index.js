@@ -5,6 +5,7 @@ export default function Home() {
   const [feedItems, setFeedItems] = useState([]);
   const [approvedArticles, setApprovedArticles] = useState([]);
   const [flaggedArticles, setFlaggedArticles] = useState([]);
+  const [junkArticles, setJunkArticles] = useState([]);
   const [notes, setNotes] = useState('');
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -12,15 +13,16 @@ export default function Home() {
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', or 'approved'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', 'approved', or 'junk'
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
 
   useEffect(() => {
-    // Load feeds, flagged, and approved articles on mount
+    // Load feeds, flagged, approved, and junk articles on mount
     loadFeeds();
     loadFlaggedArticles();
     loadApprovedArticles();
+    loadJunkArticles();
   }, []);
 
   const showStatus = (message, duration = 3000) => {
@@ -50,6 +52,19 @@ export default function Home() {
       setFlaggedArticles(data.articles || []);
     } catch (error) {
       console.error('Error loading flagged articles:', error);
+      // Don't show error to user, just log it
+    }
+  };
+
+  const loadJunkArticles = async () => {
+    try {
+      const response = await fetch('/api/articles/junked');
+      if (!response.ok) throw new Error('Failed to fetch junk articles');
+
+      const data = await response.json();
+      setJunkArticles(data.articles || []);
+    } catch (error) {
+      console.error('Error loading junk articles:', error);
       // Don't show error to user, just log it
     }
   };
@@ -278,6 +293,64 @@ export default function Home() {
     }
   };
 
+  const toggleJunk = async (item) => {
+    const isCurrentlyJunk = item.junked || junkArticles.some(j => j.link === item.link);
+
+    // Optimistically update UI - match by link instead of id
+    const updatedItems = feedItems.map(i =>
+      i.link === item.link ? { ...i, junked: !isCurrentlyJunk } : i
+    );
+    setFeedItems(updatedItems);
+
+    try {
+      if (isCurrentlyJunk) {
+        // Remove from junk
+        const response = await fetch('/api/articles/unjunk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link: item.link })
+        });
+
+        if (response.ok) {
+          showStatus('✅ Article removed from junk');
+          // Remove from junk articles list
+          setJunkArticles(junkArticles.filter(a => a.link !== item.link));
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to remove article from junk');
+        }
+      } else {
+        // Mark as junk
+        const response = await fetch('/api/articles/junk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ article: item })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showStatus('🗑️ Article marked as junk');
+          // Add to junk articles list
+          setJunkArticles([data.article, ...junkArticles]);
+        } else if (response.status === 409) {
+          // Already junked
+          showStatus('ℹ️ Article already marked as junk');
+        } else {
+          throw new Error(data.error || 'Failed to mark article as junk');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling junk:', error);
+      showStatus('❌ Error: ' + error.message);
+      // Revert optimistic update on error - match by link
+      const revertedItems = feedItems.map(i =>
+        i.link === item.link ? { ...i, junked: isCurrentlyJunk } : i
+      );
+      setFeedItems(revertedItems);
+    }
+  };
+
   const summarizeWithAI = async () => {
     if (!notes.trim()) {
       showStatus('⚠️ Please enter some notes to summarize');
@@ -388,15 +461,16 @@ export default function Home() {
     return cleaned.length > 200 ? cleaned.substring(0, 200) + '...' : cleaned;
   };
 
-  // Compute approved/flagged status dynamically based on current state
-  // Filter out approved and flagged articles from "All Articles" tab
+  // Compute approved/flagged/junked status dynamically based on current state
+  // Filter out approved, flagged, and junked articles from "All Articles" tab
   const sortedItems = [...feedItems]
     .map(item => ({
       ...item,
       approved: approvedArticles.some(a => a.link === item.link),
-      flagged: flaggedArticles.some(f => f.link === item.link)
+      flagged: flaggedArticles.some(f => f.link === item.link),
+      junked: junkArticles.some(j => j.link === item.link)
     }))
-    .filter(item => !item.approved && !item.flagged)
+    .filter(item => !item.approved && !item.flagged && !item.junked)
     .sort((a, b) =>
       new Date(b.pubDate) - new Date(a.pubDate)
     );
@@ -451,6 +525,12 @@ export default function Home() {
                 onClick={() => setActiveTab('approved')}
               >
                 Approved ({approvedArticles.length})
+              </button>
+              <button
+                className={`tab ${activeTab === 'junk' ? 'active' : ''}`}
+                onClick={() => setActiveTab('junk')}
+              >
+                Junk ({junkArticles.length})
               </button>
             </div>
             <button onClick={loadFeeds} disabled={loading} className="btn-primary">
@@ -513,6 +593,12 @@ export default function Home() {
                         >
                           {item.approved ? 'Unapprove' : 'Approve'}
                         </button>
+                        <button
+                          className="btn-junk"
+                          onClick={() => toggleJunk(item)}
+                        >
+                          Junk
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -558,12 +644,21 @@ export default function Home() {
                         >
                           Approve
                         </button>
+                        <button
+                          className="btn-junk"
+                          onClick={() => {
+                            const tempItem = { ...item, id: item.dbId, flagged: true };
+                            toggleJunk(tempItem);
+                          }}
+                        >
+                          Junk
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))
               )
-            ) : (
+            ) : activeTab === 'approved' ? (
               approvedArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">✓</div>
@@ -592,6 +687,41 @@ export default function Home() {
                           }}
                         >
                           Unapprove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : (
+              junkArticles.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">🗑️</div>
+                  <div className="empty-state-text">No junk articles yet.<br />Mark articles as junk to train the ML system.</div>
+                </div>
+              ) : (
+                junkArticles.map((item) => (
+                  <div key={item.dbId || item.id} className="feed-item">
+                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-description">{cleanDescription(item.description)}</div>
+                    <div className="feed-meta">
+                      <span className="feed-date">{formatDate(item.pubDate)}</span>
+                      <div className="feed-actions">
+                        <button
+                          className="btn-visit"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                        >
+                          View Article
+                        </button>
+                        <button
+                          className="btn-junk junked"
+                          onClick={() => {
+                            const tempItem = { ...item, id: item.dbId, junked: true };
+                            toggleJunk(tempItem);
+                          }}
+                        >
+                          Remove from Junk
                         </button>
                       </div>
                     </div>
@@ -1041,6 +1171,36 @@ export default function Home() {
           background: #002855;
           color: white;
           transform: translateY(-1px);
+        }
+
+        .btn-junk {
+          padding: 8px 16px;
+          background: #6b7280;
+          color: white;
+          border: none;
+          border-radius: 7px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-junk:hover:not(:disabled) {
+          background: #4b5563;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(107,114,128,0.3);
+        }
+
+        .btn-junk.junked {
+          background: #9ca3af;
+          cursor: pointer;
+        }
+
+        .btn-junk.junked:hover {
+          background: #6b7280;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(107,114,128,0.3);
         }
 
         .notes-header {
