@@ -18,8 +18,12 @@ export default function Home() {
   const [scoringInProgress, setScoringInProgress] = useState(false);
 
   useEffect(() => {
-    // Load predictions first, then feeds, flagged, approved, and junk articles on mount
+    // Load feeds, flagged, approved, and junk articles on mount
     const loadAll = async () => {
+      // Clean up old articles first
+      await fetch('/api/cleanup/old-articles', { method: 'POST' });
+
+      // Then load predictions after cleanup
       const predictions = await loadPredictions(); // Get predictions
       loadFeeds(predictions); // Pass predictions to loadFeeds
       loadFlaggedArticles();
