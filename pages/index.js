@@ -23,12 +23,16 @@ export default function Home() {
       // Clean up old articles first
       await fetch('/api/cleanup/old-articles', { method: 'POST' });
 
-      // Then load predictions after cleanup
-      const predictions = await loadPredictions(); // Get predictions
-      loadFeeds(predictions); // Pass predictions to loadFeeds
-      loadFlaggedArticles();
-      loadApprovedArticles();
-      loadJunkArticles();
+      // Load all article lists and predictions
+      const predictions = await loadPredictions();
+      await Promise.all([
+        loadFlaggedArticles(),
+        loadApprovedArticles(),
+        loadJunkArticles()
+      ]);
+
+      // Then load feeds with all the data
+      loadFeeds(predictions);
     };
     loadAll();
   }, []);
@@ -94,9 +98,18 @@ export default function Home() {
     }
   };
 
-  const loadFeeds = async (existingPredictions = null) => {
+  const loadFeeds = async (existingPredictions = null, forceReloadLists = false) => {
     setLoading(true);
     try {
+      // If called from Refresh button, reload all lists first
+      if (forceReloadLists) {
+        await Promise.all([
+          loadFlaggedArticles(),
+          loadApprovedArticles(),
+          loadJunkArticles()
+        ]);
+      }
+
       const response = await fetch('/api/feeds');
       if (!response.ok) throw new Error('Failed to fetch feeds');
 
@@ -625,7 +638,7 @@ export default function Home() {
               <span className="ml-stats-icon">🤖</span>
               <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
-            <button onClick={loadFeeds} disabled={loading} className="btn-primary">
+            <button onClick={() => loadFeeds(null, true)} disabled={loading} className="btn-primary">
               {loading ? 'Loading...' : 'Refresh Feeds'}
             </button>
           </div>
