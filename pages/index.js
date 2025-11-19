@@ -130,9 +130,9 @@ export default function Home() {
   const toggleApproval = async (item) => {
     const isCurrentlyApproved = item.approved;
 
-    // Optimistically update UI
+    // Optimistically update UI - match by link instead of id
     const updatedItems = feedItems.map(i =>
-      i.id === item.id ? { ...i, approved: !isCurrentlyApproved } : i
+      i.link === item.link ? { ...i, approved: !isCurrentlyApproved } : i
     );
     setFeedItems(updatedItems);
 
@@ -177,9 +177,9 @@ export default function Home() {
     } catch (error) {
       console.error('Error toggling approval:', error);
       showStatus('❌ Error: ' + error.message);
-      // Revert optimistic update on error
+      // Revert optimistic update on error - match by link
       const revertedItems = feedItems.map(i =>
-        i.id === item.id ? { ...i, approved: isCurrentlyApproved } : i
+        i.link === item.link ? { ...i, approved: isCurrentlyApproved } : i
       );
       setFeedItems(revertedItems);
     }
@@ -188,9 +188,9 @@ export default function Home() {
   const toggleFlag = async (item) => {
     const isCurrentlyFlagged = item.flagged;
 
-    // Optimistically update UI
+    // Optimistically update UI - match by link instead of id
     const updatedItems = feedItems.map(i =>
-      i.id === item.id ? { ...i, flagged: !isCurrentlyFlagged } : i
+      i.link === item.link ? { ...i, flagged: !isCurrentlyFlagged } : i
     );
     setFeedItems(updatedItems);
 
@@ -235,9 +235,9 @@ export default function Home() {
     } catch (error) {
       console.error('Error toggling flag:', error);
       showStatus('❌ Error: ' + error.message);
-      // Revert optimistic update on error
+      // Revert optimistic update on error - match by link
       const revertedItems = feedItems.map(i =>
-        i.id === item.id ? { ...i, flagged: isCurrentlyFlagged } : i
+        i.link === item.link ? { ...i, flagged: isCurrentlyFlagged } : i
       );
       setFeedItems(revertedItems);
     }
@@ -353,7 +353,12 @@ export default function Home() {
     return cleaned.length > 200 ? cleaned.substring(0, 200) + '...' : cleaned;
   };
 
-  const sortedItems = [...feedItems].sort((a, b) => 
+  // Compute approved/flagged status dynamically based on current state
+  const sortedItems = [...feedItems].map(item => ({
+    ...item,
+    approved: approvedArticles.some(a => a.link === item.link),
+    flagged: flaggedArticles.some(f => f.link === item.link)
+  })).sort((a, b) =>
     new Date(b.pubDate) - new Date(a.pubDate)
   );
 
