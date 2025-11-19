@@ -54,3 +54,42 @@ ALTER TABLE flagged_articles ENABLE ROW LEVEL SECURITY;
 -- Create a policy that allows all operations
 CREATE POLICY "Allow all operations on flagged_articles" ON flagged_articles
   FOR ALL USING (true);
+
+-- =====================================================
+-- 3. ARTICLE PREDICTIONS TABLE (ML Confidence Scores)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS article_predictions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  link TEXT UNIQUE NOT NULL,
+  title TEXT,
+  description TEXT,
+  confidence_score FLOAT NOT NULL,
+  reasoning TEXT,
+  predicted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  model_version TEXT DEFAULT 'claude-3.5-sonnet'
+);
+
+-- Create indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_predictions_score ON article_predictions(confidence_score DESC);
+CREATE INDEX IF NOT EXISTS idx_predictions_link ON article_predictions(link);
+CREATE INDEX IF NOT EXISTS idx_predictions_predicted_at ON article_predictions(predicted_at DESC);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE article_predictions ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that allows all operations
+CREATE POLICY "Allow all operations on article_predictions" ON article_predictions
+  FOR ALL USING (true);
+
+-- =====================================================
+-- 4. ADD ML FIELDS TO EXISTING TABLES
+-- =====================================================
+
+-- Add confidence score and auto_flagged to flagged_articles
+ALTER TABLE flagged_articles
+ADD COLUMN IF NOT EXISTS confidence_score FLOAT,
+ADD COLUMN IF NOT EXISTS auto_flagged BOOLEAN DEFAULT false;
+
+-- Add confidence score to approved_articles
+ALTER TABLE approved_articles
+ADD COLUMN IF NOT EXISTS confidence_score FLOAT;

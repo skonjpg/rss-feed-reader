@@ -13,6 +13,8 @@ export default function Home() {
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', or 'approved'
+  const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
+  const [scoringInProgress, setScoringInProgress] = useState(false);
 
   useEffect(() => {
     // Load feeds, flagged, and approved articles on mount
@@ -73,11 +75,55 @@ export default function Home() {
 
       setFeedItems(items);
       showStatus('✅ Feeds loaded successfully!');
+
+      // Trigger ML scoring asynchronously (don't block UI)
+      scoreArticlesWithML(items);
     } catch (error) {
       console.error('Error loading feeds:', error);
       showStatus('❌ Error loading feeds');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const scoreArticlesWithML = async (articles) => {
+    if (articles.length === 0 || scoringInProgress) return;
+
+    setScoringInProgress(true);
+    try {
+      showStatus('🤖 Claude is analyzing articles...', 5000);
+
+      const response = await fetch('/api/ml/score-articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articles })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Map confidence scores
+        const scores = {};
+        data.articles.forEach(article => {
+          scores[article.link] = {
+            confidence: article.confidence,
+            reasoning: article.reasoning
+          };
+        });
+        setConfidenceScores(scores);
+
+        if (data.autoFlagged > 0) {
+          showStatus(`✨ Auto-flagged ${data.autoFlagged} high-confidence articles!`, 5000);
+          loadFlaggedArticles(); // Reload flagged list
+        } else {
+          showStatus(`✅ Analyzed ${data.scored} articles with Claude`, 3000);
+        }
+      }
+    } catch (error) {
+      console.error('ML scoring error:', error);
+      // Don't show error to user, scoring is optional
+    } finally {
+      setScoringInProgress(false);
     }
   };
 
@@ -378,14 +424,33 @@ export default function Home() {
                   <div className="empty-state-text">No feed items found.<br />Click "Refresh Feeds" to load.</div>
                 </div>
               ) : (
-                sortedItems.map((item) => (
-                  <div key={item.id} className={`feed-item ${item.approved ? 'approved' : ''}`}>
-                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{item.title}</div>
-                    <div className="feed-description">{cleanDescription(item.description)}</div>
-                    <div className="feed-meta">
-                      <span className="feed-date">{formatDate(item.pubDate)}</span>
-                      <div className="feed-actions">
+                sortedItems.map((item) => {
+                  const scoreData = confidenceScores[item.link];
+                  const confidence = scoreData?.confidence;
+                  const getConfidenceLevel = (score) => {
+                    if (score >= 80) return 'high';
+                    if (score >= 60) return 'medium';
+                    return 'low';
+                  };
+
+                  return (
+                    <div key={item.id} className={`feed-item ${item.approved ? 'approved' : ''} ${item.flagged ? 'flagged' : ''}`}>
+                      <div className="feed-item-header">
+                        <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                        {confidence !== undefined && (
+                          <span
+                            className={`confidence-badge confidence-${getConfidenceLevel(confidence)}`}
+                            title={scoreData.reasoning}
+                          >
+                            {confidence >= 80 ? '🎯' : confidence >= 60 ? '👍' : '📊'} {confidence}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="feed-title">{item.title}</div>
+                      <div className="feed-description">{cleanDescription(item.description)}</div>
+                      <div className="feed-meta">
+                        <span className="feed-date">{formatDate(item.pubDate)}</span>
+                        <div className="feed-actions">
                         <button
                           className="btn-visit"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
@@ -407,7 +472,8 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )
             ) : activeTab === 'flagged' ? (
               flaggedArticles.length === 0 ? (
@@ -756,6 +822,13 @@ export default function Home() {
           background: #fffbeb;
         }
 
+        .feed-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
         .feed-source {
           display: inline-block;
           padding: 6px 12px;
@@ -764,7 +837,6 @@ export default function Home() {
           border-radius: 6px;
           font-size: 11px;
           font-weight: 700;
-          margin-bottom: 12px;
           letter-spacing: 0.5px;
           text-transform: uppercase;
         }
@@ -779,6 +851,37 @@ export default function Home() {
 
         .feed-source.digitimes {
           background: #7c3aed;
+        }
+
+        .confidence-badge {
+          padding: 6px 12px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+          cursor: help;
+          transition: all 0.2s;
+        }
+
+        .confidence-badge:hover {
+          transform: scale(1.05);
+        }
+
+        .confidence-high {
+          background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+          color: white;
+          box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
+        }
+
+        .confidence-medium {
+          background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+          color: white;
+          box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
+
+        .confidence-low {
+          background: #e2e8f0;
+          color: #64748b;
         }
 
         .feed-title {
