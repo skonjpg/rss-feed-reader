@@ -24,13 +24,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Articles array required' });
     }
 
-    // Limit to 20 most recent articles to avoid timeout
-    // Sort by pubDate and take the 20 most recent
-    const sortedArticles = [...articles].sort((a, b) =>
-      new Date(b.pubDate) - new Date(a.pubDate)
-    ).slice(0, 20);
+    // Articles are already filtered and sorted by frontend
+    // Backend processes up to 40 articles (4 batches of 10) within 60s timeout
+    // If more than 40 unscored articles, take the most recent 40
+    const sortedArticles = articles.length > 40
+      ? [...articles].sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)).slice(0, 40)
+      : articles;
 
-    console.log(`Scoring ${sortedArticles.length} most recent articles with Claude...`);
+    console.log(`Scoring ${sortedArticles.length} articles with Claude...`);
 
     // Score articles using Claude
     const scoredArticles = await scoreBatchArticles(sortedArticles);
