@@ -597,10 +597,18 @@ export default function Home() {
     });
   };
 
+  const decodeHtmlEntities = (text) => {
+    if (!text) return '';
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   const cleanDescription = (desc) => {
     if (!desc) return '';
     const cleaned = desc.replace(/<[^>]*>/g, '').trim();
-    return cleaned.length > 200 ? cleaned.substring(0, 200) + '...' : cleaned;
+    const decoded = decodeHtmlEntities(cleaned);
+    return decoded.length > 200 ? decoded.substring(0, 200) + '...' : decoded;
   };
 
   // Compute approved/flagged/junked status dynamically based on current state
@@ -719,7 +727,7 @@ export default function Home() {
                           </span>
                         )}
                       </div>
-                      <div className="feed-title">{item.title}</div>
+                      <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
                       <div className="feed-description">{cleanDescription(item.description)}</div>
                       <div className="feed-meta">
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
@@ -764,7 +772,7 @@ export default function Home() {
                 flaggedArticles.map((item) => (
                   <div key={item.dbId || item.id} className="feed-item flagged">
                     <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
                     <div className="feed-description">{cleanDescription(item.description)}</div>
                     <div className="feed-meta">
                       <span className="feed-date">{formatDate(item.pubDate)}</span>
@@ -817,7 +825,7 @@ export default function Home() {
                 approvedArticles.map((item) => (
                   <div key={item.dbId || item.id} className="feed-item approved">
                     <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
                     <div className="feed-description">{cleanDescription(item.description)}</div>
                     <div className="feed-meta">
                       <span className="feed-date">{formatDate(item.pubDate)}</span>
@@ -852,7 +860,7 @@ export default function Home() {
                 junkArticles.map((item) => (
                   <div key={item.dbId || item.id} className="feed-item">
                     <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{item.title}</div>
+                    <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
                     <div className="feed-description">{cleanDescription(item.description)}</div>
                     <div className="feed-meta">
                       <span className="feed-date">{formatDate(item.pubDate)}</span>
