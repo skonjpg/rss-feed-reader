@@ -463,20 +463,31 @@ export default function Home() {
     try {
       showStatus('🔍 Fetching article information...');
 
-      // Fetch article metadata
-      const metadataResponse = await fetch('/api/articles/fetch-metadata', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: manualArticleUrl.trim() })
-      });
+      let article;
 
-      if (!metadataResponse.ok) {
-        const errorData = await metadataResponse.json();
-        throw new Error(errorData.error || 'Failed to fetch article metadata');
+      // First check if article is already in our feed items
+      const existingArticle = feedItems.find(item => item.link === manualArticleUrl.trim());
+
+      if (existingArticle) {
+        // Use the existing article data from RSS feed
+        article = { ...existingArticle };
+        showStatus('✓ Found article in feed');
+      } else {
+        // Try to fetch metadata from the URL
+        const metadataResponse = await fetch('/api/articles/fetch-metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: manualArticleUrl.trim() })
+        });
+
+        if (!metadataResponse.ok) {
+          const errorData = await metadataResponse.json();
+          throw new Error(errorData.error || 'Failed to fetch article metadata');
+        }
+
+        const metadataResult = await metadataResponse.json();
+        article = metadataResult.article;
       }
-
-      const metadataResult = await metadataResponse.json();
-      const article = metadataResult.article;
 
       // Add to flagged articles
       const flagResponse = await fetch('/api/articles/flag', {
@@ -523,13 +534,10 @@ export default function Home() {
               reasoning: scored.reasoning
             }
           }));
-          showStatus(`✅ Article added with ${scored.confidence}% confidence!`);
-        } else {
-          showStatus('✅ Article added to flagged!');
         }
-      } else {
-        showStatus('✅ Article added to flagged!');
       }
+
+      showStatus('✅ Article added to flagged!');
     } catch (error) {
       console.error('Error adding manual article:', error);
       showStatus(`❌ ${error.message}`);
@@ -879,13 +887,32 @@ export default function Home() {
                     <div className="empty-state-text">No flagged articles yet.<br />Add manually above or switch to "All Articles" tab.</div>
                   </div>
                 ) : (
-                  flaggedArticles.map((item) => (
-                  <div key={item.dbId || item.id} className="feed-item flagged">
-                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
-                    <div className="feed-description">{cleanDescription(item.description)}</div>
-                    <div className="feed-meta">
-                      <span className="feed-date">{formatDate(item.pubDate)}</span>
+                  flaggedArticles.map((item) => {
+                    const scoreData = confidenceScores[item.link];
+                    const confidence = scoreData?.confidence;
+                    const getConfidenceLevel = (score) => {
+                      if (score >= 80) return 'high';
+                      if (score >= 60) return 'medium';
+                      return 'low';
+                    };
+
+                    return (
+                      <div key={item.dbId || item.id} className="feed-item flagged">
+                        <div className="feed-item-header">
+                          <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                          {confidence !== undefined && (
+                            <span
+                              className={`confidence-badge confidence-${getConfidenceLevel(confidence)}`}
+                              title={scoreData.reasoning || 'AI confidence score'}
+                            >
+                              {confidence >= 80 ? '🎯' : confidence >= 60 ? '👍' : '📊'} {confidence}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
+                        <div className="feed-description">{cleanDescription(item.description)}</div>
+                        <div className="feed-meta">
+                          <span className="feed-date">{formatDate(item.pubDate)}</span>
                       <div className="feed-actions">
                         <button
                           className="btn-visit"
@@ -923,7 +950,8 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                ))
+                    );
+                  })
                 )}
               </>
             ) : activeTab === 'approved' ? (
