@@ -25,6 +25,17 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to unflag article', details: error.message });
     }
 
+    // Also delete the confidence score to prevent auto-junking when article returns to All Articles
+    const { error: deleteError } = await supabase
+      .from('article_predictions')
+      .delete()
+      .eq('link', link);
+
+    if (deleteError) {
+      console.error('Error deleting prediction:', deleteError);
+      // Don't fail the request if prediction deletion fails - article is already unflagged
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Article unflagged successfully'

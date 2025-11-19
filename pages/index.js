@@ -279,6 +279,13 @@ export default function Home() {
           // Add to approved articles list
           setApprovedArticles([data.article, ...approvedArticles]);
 
+          // Remove confidence score since article is now training data
+          setConfidenceScores(prevScores => {
+            const newScores = { ...prevScores };
+            delete newScores[item.link];
+            return newScores;
+          });
+
           // If the article was flagged, automatically unflag it
           if (isCurrentlyFlagged) {
             const unflagResponse = await fetch('/api/articles/unflag', {
@@ -331,6 +338,12 @@ export default function Home() {
           showStatus('✅ Article unflagged');
           // Remove from flagged articles list
           setFlaggedArticles(flaggedArticles.filter(a => a.link !== item.link));
+          // Remove confidence score to prevent auto-junking
+          setConfidenceScores(prevScores => {
+            const newScores = { ...prevScores };
+            delete newScores[item.link];
+            return newScores;
+          });
         } else {
           const data = await response.json();
           throw new Error(data.error || 'Failed to unflag article');
@@ -409,6 +422,13 @@ export default function Home() {
           showStatus('🗑️ Article marked as junk');
           // Add to junk articles list
           setJunkArticles([data.article, ...junkArticles]);
+
+          // Remove confidence score since article is now training data
+          setConfidenceScores(prevScores => {
+            const newScores = { ...prevScores };
+            delete newScores[item.link];
+            return newScores;
+          });
 
           // If the article was flagged, automatically unflag it
           if (isCurrentlyFlagged) {
