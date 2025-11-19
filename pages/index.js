@@ -548,6 +548,9 @@ export default function Home() {
       new Date(b.pubDate) - new Date(a.pubDate)
     );
 
+  // Count scored articles in All Articles tab only
+  const scoredInAllArticles = sortedItems.filter(item => confidenceScores[item.link] !== undefined).length;
+
   return (
     <>
       <Head>
@@ -608,7 +611,7 @@ export default function Home() {
             </div>
             <div className="ml-stats">
               <span className="ml-stats-icon">🤖</span>
-              <span className="ml-stats-text">{Object.keys(confidenceScores).length} Scored</span>
+              <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
             <button onClick={loadFeeds} disabled={loading} className="btn-primary">
               {loading ? 'Loading...' : 'Refresh Feeds'}
