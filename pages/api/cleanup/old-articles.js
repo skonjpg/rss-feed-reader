@@ -20,12 +20,31 @@ export default async function handler(req, res) {
       .from('junk_articles')
       .select('link');
 
-    const keepLinks = new Set([
-      ...(approvedData || []).map(a => a.link),
-      ...(junkData || []).map(j => j.link)
-    ]);
+    const approvedLinks = new Set((approvedData || []).map(a => a.link));
+    const junkLinks = new Set((junkData || []).map(j => j.link));
+    const keepLinks = new Set([...approvedLinks, ...junkLinks]);
 
     console.log(`Keeping ${keepLinks.size} links (approved + junk)`);
+
+    // Remove flagged articles that are also approved or junked (should be mutually exclusive)
+    const { data: conflictingFlagged } = await supabase
+      .from('flagged_articles')
+      .select('link');
+
+    const flaggedToRemove = (conflictingFlagged || [])
+      .filter(f => approvedLinks.has(f.link) || junkLinks.has(f.link))
+      .map(f => f.link);
+
+    if (flaggedToRemove.length > 0) {
+      const { error: conflictError } = await supabase
+        .from('flagged_articles')
+        .delete()
+        .in('link', flaggedToRemove);
+
+      if (!conflictError) {
+        console.log(`Removed ${flaggedToRemove.length} flagged articles that are approved/junked`);
+      }
+    }
 
     // Delete old predictions (except those in approved/junk)
     const { data: oldPredictions } = await supabase
@@ -77,7 +96,8 @@ export default async function handler(req, res) {
       success: true,
       deleted: {
         predictions: predictionsToDelete.length,
-        flagged: flaggedToDelete.length
+        flagged: flaggedToDelete.length,
+        conflicts: flaggedToRemove.length
       },
       kept: keepLinks.size
     });
