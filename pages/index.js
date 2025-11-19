@@ -389,13 +389,17 @@ export default function Home() {
   };
 
   // Compute approved/flagged status dynamically based on current state
-  const sortedItems = [...feedItems].map(item => ({
-    ...item,
-    approved: approvedArticles.some(a => a.link === item.link),
-    flagged: flaggedArticles.some(f => f.link === item.link)
-  })).sort((a, b) =>
-    new Date(b.pubDate) - new Date(a.pubDate)
-  );
+  // Filter out approved and flagged articles from "All Articles" tab
+  const sortedItems = [...feedItems]
+    .map(item => ({
+      ...item,
+      approved: approvedArticles.some(a => a.link === item.link),
+      flagged: flaggedArticles.some(f => f.link === item.link)
+    }))
+    .filter(item => !item.approved && !item.flagged)
+    .sort((a, b) =>
+      new Date(b.pubDate) - new Date(a.pubDate)
+    );
 
   return (
     <>
