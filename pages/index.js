@@ -129,10 +129,11 @@ export default function Home() {
 
   const toggleApproval = async (item) => {
     const isCurrentlyApproved = item.approved;
+    const isCurrentlyFlagged = item.flagged || flaggedArticles.some(f => f.link === item.link);
 
     // Optimistically update UI - match by link instead of id
     const updatedItems = feedItems.map(i =>
-      i.link === item.link ? { ...i, approved: !isCurrentlyApproved } : i
+      i.link === item.link ? { ...i, approved: !isCurrentlyApproved, flagged: isCurrentlyApproved ? i.flagged : false } : i
     );
     setFeedItems(updatedItems);
 
@@ -167,6 +168,19 @@ export default function Home() {
           showStatus('✅ Story approved globally');
           // Add to approved articles list
           setApprovedArticles([data.article, ...approvedArticles]);
+
+          // If the article was flagged, automatically unflag it
+          if (isCurrentlyFlagged) {
+            const unflagResponse = await fetch('/api/articles/unflag', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ link: item.link })
+            });
+
+            if (unflagResponse.ok) {
+              setFlaggedArticles(flaggedArticles.filter(a => a.link !== item.link));
+            }
+          }
         } else if (response.status === 409) {
           // Already approved
           showStatus('ℹ️ Article already approved');
