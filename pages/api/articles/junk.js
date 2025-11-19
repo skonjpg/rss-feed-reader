@@ -44,6 +44,17 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to mark article as junk', details: error.message });
     }
 
+    // Delete the confidence score from predictions table since article is now training data
+    const { error: deleteError } = await supabase
+      .from('article_predictions')
+      .delete()
+      .eq('link', article.link);
+
+    if (deleteError) {
+      console.error('Error deleting prediction:', deleteError);
+      // Don't fail the request if prediction deletion fails - article is already junked
+    }
+
     return res.status(200).json({
       success: true,
       article: data,
