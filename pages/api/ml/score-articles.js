@@ -81,8 +81,8 @@ export default async function handler(req, res) {
         }
       }
 
-      // Auto-junk if confidence <= 10%
-      if (article.confidence <= 10) {
+      // Auto-junk if confidence <= 20%
+      if (article.confidence <= 20) {
         const { error: junkError } = await supabase
           .from('junk_articles')
           .upsert({
