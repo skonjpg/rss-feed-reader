@@ -28,6 +28,7 @@ export default async function handler(req, res) {
       source: article.source,
       sourceName: article.source_name,
       flagged: true,
+      hidden: article.hidden || false, // Include hidden status
       flaggedAt: article.flagged_at,
       dbId: article.id // Keep the database ID for reference
     }));

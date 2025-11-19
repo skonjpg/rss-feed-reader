@@ -473,6 +473,54 @@ export default function Home() {
     }
   };
 
+  const hideArticle = async (item) => {
+    try {
+      const response = await fetch('/api/articles/hide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: item.link })
+      });
+
+      if (response.ok) {
+        showStatus('👁️ Article hidden');
+        // Update the flagged article to mark as hidden
+        setFlaggedArticles(flaggedArticles.map(a =>
+          a.link === item.link ? { ...a, hidden: true } : a
+        ));
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to hide article');
+      }
+    } catch (error) {
+      console.error('Error hiding article:', error);
+      showStatus('❌ Error: ' + error.message);
+    }
+  };
+
+  const unhideArticle = async (item) => {
+    try {
+      const response = await fetch('/api/articles/unhide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: item.link })
+      });
+
+      if (response.ok) {
+        showStatus('👁️ Article unhidden');
+        // Update the flagged article to mark as not hidden
+        setFlaggedArticles(flaggedArticles.map(a =>
+          a.link === item.link ? { ...a, hidden: false } : a
+        ));
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to unhide article');
+      }
+    } catch (error) {
+      console.error('Error unhiding article:', error);
+      showStatus('❌ Error: ' + error.message);
+    }
+  };
+
   const addManualArticle = async () => {
     if (!manualArticleUrl.trim()) {
       showStatus('⚠️ Please enter a URL');
@@ -907,7 +955,9 @@ export default function Home() {
                     <div className="empty-state-text">No flagged articles yet.<br />Add manually above or switch to "All Articles" tab.</div>
                   </div>
                 ) : (
-                  flaggedArticles.map((item) => {
+                  <>
+                    {/* Visible flagged articles */}
+                    {flaggedArticles.filter(item => !item.hidden).map((item) => {
                     const scoreData = confidenceScores[item.link];
                     const confidence = scoreData?.confidence;
                     const getConfidenceLevel = (score) => {
@@ -941,13 +991,10 @@ export default function Home() {
                           View Article
                         </button>
                         <button
-                          className="btn-flag flagged"
-                          onClick={() => {
-                            const tempItem = { ...item, id: item.dbId, flagged: true };
-                            toggleFlag(tempItem);
-                          }}
+                          className="btn-flag"
+                          onClick={() => hideArticle(item)}
                         >
-                          Unflag
+                          Hide
                         </button>
                         <button
                           className="btn-approve"
@@ -971,7 +1018,79 @@ export default function Home() {
                     </div>
                   </div>
                     );
-                  })
+                    })}
+
+                    {/* Divider if there are hidden articles */}
+                    {flaggedArticles.filter(item => item.hidden).length > 0 && (
+                      <div className="hidden-divider">
+                        <span>Hidden Articles ({flaggedArticles.filter(item => item.hidden).length})</span>
+                      </div>
+                    )}
+
+                    {/* Hidden flagged articles */}
+                    {flaggedArticles.filter(item => item.hidden).map((item) => {
+                      const scoreData = confidenceScores[item.link];
+                      const confidence = scoreData?.confidence;
+                      const getConfidenceLevel = (score) => {
+                        if (score >= 80) return 'high';
+                        if (score >= 60) return 'medium';
+                        return 'low';
+                      };
+
+                      return (
+                        <div key={item.dbId || item.id} className="feed-item flagged hidden-article">
+                          <div className="feed-item-header">
+                            <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                            {confidence !== undefined && (
+                              <span
+                                className={`confidence-badge confidence-${getConfidenceLevel(confidence)}`}
+                                title={scoreData.reasoning || 'AI confidence score'}
+                              >
+                                {confidence >= 80 ? '🎯' : confidence >= 60 ? '👍' : '📊'} {confidence}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
+                          <div className="feed-description">{cleanDescription(item.description)}</div>
+                          <div className="feed-meta">
+                            <span className="feed-date">{formatDate(item.pubDate)}</span>
+                            <div className="feed-actions">
+                              <button
+                                className="btn-visit"
+                                onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                              >
+                                View Article
+                              </button>
+                              <button
+                                className="btn-flag"
+                                onClick={() => unhideArticle(item)}
+                              >
+                                Unhide
+                              </button>
+                              <button
+                                className="btn-approve"
+                                onClick={() => {
+                                  const tempItem = { ...item, id: item.dbId, flagged: true };
+                                  toggleApproval(tempItem);
+                                }}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="btn-junk"
+                                onClick={() => {
+                                  const tempItem = { ...item, id: item.dbId, flagged: true };
+                                  toggleJunk(tempItem);
+                                }}
+                              >
+                                Junk
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
                 )}
               </>
             ) : activeTab === 'approved' ? (
@@ -1394,6 +1513,27 @@ export default function Home() {
         .feed-item.flagged {
           border-left: 4px solid #f59e0b;
           background: #fffbeb;
+        }
+
+        .hidden-article {
+          opacity: 0.6;
+        }
+
+        .hidden-divider {
+          margin: 24px 0;
+          padding: 12px 0;
+          text-align: center;
+          border-top: 2px solid #e5e7eb;
+          border-bottom: 2px solid #e5e7eb;
+          background: #f9fafb;
+        }
+
+        .hidden-divider span {
+          font-size: 13px;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
         .feed-item-header {
