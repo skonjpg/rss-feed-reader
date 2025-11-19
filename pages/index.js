@@ -187,9 +187,21 @@ export default function Home() {
           ...scores
         }));
 
+        // Reload lists if articles were auto-flagged or auto-junked
         if (data.autoFlagged > 0) {
+          loadFlaggedArticles();
+        }
+        if (data.autoJunked > 0) {
+          loadJunkArticles();
+        }
+
+        // Show status message
+        if (data.autoFlagged > 0 && data.autoJunked > 0) {
+          showStatus(`✨ Auto-flagged ${data.autoFlagged}, auto-junked ${data.autoJunked} articles!`, 5000);
+        } else if (data.autoFlagged > 0) {
           showStatus(`✨ Auto-flagged ${data.autoFlagged} high-confidence articles!`, 5000);
-          loadFlaggedArticles(); // Reload flagged list
+        } else if (data.autoJunked > 0) {
+          showStatus(`🗑️ Auto-junked ${data.autoJunked} low-confidence articles!`, 5000);
         } else {
           const scoreMessage = data.total > data.scored
             ? `✅ Analyzed ${data.scored} of ${data.total} most recent articles`

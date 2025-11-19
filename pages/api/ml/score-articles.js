@@ -31,8 +31,9 @@ export default async function handler(req, res) {
     // Score articles using Claude
     const scoredArticles = await scoreBatchArticles(articles);
 
-    // Auto-flag articles with high confidence
+    // Auto-flag high confidence articles and auto-junk low confidence articles
     const autoFlagged = [];
+    const autoJunked = [];
 
     for (const article of scoredArticles) {
       // Store prediction in article_predictions table
@@ -79,16 +80,43 @@ export default async function handler(req, res) {
           });
         }
       }
+
+      // Auto-junk if confidence <= 10%
+      if (article.confidence <= 10) {
+        const { error: junkError } = await supabase
+          .from('junk_articles')
+          .upsert({
+            article_id: article.id?.toString() || '',
+            title: article.title,
+            description: article.description || '',
+            link: article.link,
+            pub_date: article.pubDate,
+            source: article.source || 'unknown',
+            source_name: article.sourceName || 'Unknown'
+          }, {
+            onConflict: 'link',
+            ignoreDuplicates: true
+          });
+
+        if (!junkError) {
+          autoJunked.push({
+            title: article.title,
+            confidence: article.confidence
+          });
+        }
+      }
     }
 
-    console.log(`Scored ${scoredArticles.length} articles, auto-flagged ${autoFlagged.length}`);
+    console.log(`Scored ${scoredArticles.length} articles, auto-flagged ${autoFlagged.length}, auto-junked ${autoJunked.length}`);
 
     return res.status(200).json({
       success: true,
       scored: scoredArticles.length,
       total: articles.length,
       autoFlagged: autoFlagged.length,
+      autoJunked: autoJunked.length,
       autoFlaggedArticles: autoFlagged,
+      autoJunkedArticles: autoJunked,
       articles: scoredArticles.map(a => ({
         link: a.link,
         title: a.title,
