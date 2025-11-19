@@ -93,3 +93,30 @@ ADD COLUMN IF NOT EXISTS auto_flagged BOOLEAN DEFAULT false;
 -- Add confidence score to approved_articles
 ALTER TABLE approved_articles
 ADD COLUMN IF NOT EXISTS confidence_score FLOAT;
+
+-- =====================================================
+-- 5. JUNK ARTICLES TABLE (Negative Training Examples)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS junk_articles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  article_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  link TEXT NOT NULL,
+  pub_date TIMESTAMP WITH TIME ZONE,
+  source TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  junked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(link) -- Prevent duplicate junk marks of same article
+);
+
+-- Create indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_junk_articles_junked_at ON junk_articles(junked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_junk_articles_source ON junk_articles(source);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE junk_articles ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that allows all operations
+CREATE POLICY "Allow all operations on junk_articles" ON junk_articles
+  FOR ALL USING (true);
