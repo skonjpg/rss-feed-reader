@@ -28,6 +28,7 @@ export default async function handler(req, res) {
       source: article.source,
       sourceName: article.source_name,
       approved: true,
+      published: article.published || false, // Include published status
       approvedAt: article.approved_at,
       dbId: article.id // Keep the database ID for reference
     }));
