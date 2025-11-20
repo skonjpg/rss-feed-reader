@@ -1791,7 +1791,7 @@ export default function Home() {
 
         .notes-textarea {
           width: 100%;
-          min-height: 200px;
+          min-height: 500px;
           padding: 16px;
           border: 2px solid #e1e8ed;
           border-radius: 12px;
