@@ -810,13 +810,9 @@ export default function Home() {
           <div className="header">
             <div className="brand-header">
               <div className="brand-logo">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="32" height="32" rx="4" fill="white" fillOpacity="0.15"/>
-                  <path d="M8 12h16M8 16h16M8 20h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
                 <div className="brand-text">
                   <h1>Edgewater Research</h1>
-                  <p className="brand-tagline">Market Intelligence Feed Monitor</p>
+                  <p className="brand-tagline">Digest Streamliner</p>
                 </div>
               </div>
             </div>
@@ -1826,7 +1822,7 @@ export default function Home() {
         .btn-ai {
           flex: 1;
           padding: 12px 24px;
-          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
           color: white;
           border: none;
           border-radius: 8px;
@@ -1835,12 +1831,12 @@ export default function Home() {
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           transition: all 0.2s;
-          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.25);
+          box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
         }
 
         .btn-ai:hover:not(:disabled) {
-          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
           transform: translateY(-1px);
         }
 
