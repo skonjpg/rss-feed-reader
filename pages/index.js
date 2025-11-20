@@ -521,6 +521,54 @@ export default function Home() {
     }
   };
 
+  const publishArticle = async (item) => {
+    try {
+      const response = await fetch('/api/articles/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: item.link })
+      });
+
+      if (response.ok) {
+        showStatus('📤 Article published');
+        // Update the approved article to mark as published
+        setApprovedArticles(approvedArticles.map(a =>
+          a.link === item.link ? { ...a, published: true } : a
+        ));
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to publish article');
+      }
+    } catch (error) {
+      console.error('Error publishing article:', error);
+      showStatus('❌ Error: ' + error.message);
+    }
+  };
+
+  const unpublishArticle = async (item) => {
+    try {
+      const response = await fetch('/api/articles/unpublish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: item.link })
+      });
+
+      if (response.ok) {
+        showStatus('📥 Article unpublished');
+        // Update the approved article to mark as not published
+        setApprovedArticles(approvedArticles.map(a =>
+          a.link === item.link ? { ...a, published: false } : a
+        ));
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to unpublish article');
+      }
+    } catch (error) {
+      console.error('Error unpublishing article:', error);
+      showStatus('❌ Error: ' + error.message);
+    }
+  };
+
   const addManualArticle = async () => {
     if (!manualArticleUrl.trim()) {
       showStatus('⚠️ Please enter a URL');
@@ -810,13 +858,9 @@ export default function Home() {
           <div className="header">
             <div className="brand-header">
               <div className="brand-logo">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="32" height="32" rx="4" fill="white" fillOpacity="0.15"/>
-                  <path d="M8 12h16M8 16h16M8 20h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
                 <div className="brand-text">
                   <h1>Edgewater Research</h1>
-                  <p className="brand-tagline">Market Intelligence Feed Monitor</p>
+                  <p className="brand-tagline">Digest Streamliner</p>
                 </div>
               </div>
             </div>
@@ -1100,33 +1144,84 @@ export default function Home() {
                   <div className="empty-state-text">No approved articles yet.<br />Switch to "All Articles" tab to approve some.</div>
                 </div>
               ) : (
-                approvedArticles.map((item) => (
-                  <div key={item.dbId || item.id} className="feed-item approved">
-                    <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
-                    <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
-                    <div className="feed-description">{cleanDescription(item.description)}</div>
-                    <div className="feed-meta">
-                      <span className="feed-date">{formatDate(item.pubDate)}</span>
-                      <div className="feed-actions">
-                        <button
-                          className="btn-visit"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                        >
-                          View Article
-                        </button>
-                        <button
-                          className="btn-approve approved"
-                          onClick={() => {
-                            const tempItem = { ...item, id: item.dbId, approved: true };
-                            toggleApproval(tempItem);
-                          }}
-                        >
-                          Unapprove
-                        </button>
+                <>
+                  {/* Unpublished approved articles */}
+                  {approvedArticles.filter(item => !item.published).map((item) => (
+                    <div key={item.dbId || item.id} className="feed-item approved">
+                      <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                      <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
+                      <div className="feed-description">{cleanDescription(item.description)}</div>
+                      <div className="feed-meta">
+                        <span className="feed-date">{formatDate(item.pubDate)}</span>
+                        <div className="feed-actions">
+                          <button
+                            className="btn-visit"
+                            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          >
+                            View Article
+                          </button>
+                          <button
+                            className="btn-approve approved"
+                            onClick={() => {
+                              const tempItem = { ...item, id: item.dbId, approved: true };
+                              toggleApproval(tempItem);
+                            }}
+                          >
+                            Unapprove
+                          </button>
+                          <button
+                            className="btn-publish"
+                            onClick={() => publishArticle(item)}
+                          >
+                            Publish
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+
+                  {/* Divider if there are published articles */}
+                  {approvedArticles.filter(item => item.published).length > 0 && (
+                    <div className="hidden-divider">
+                      <span>Published Articles ({approvedArticles.filter(item => item.published).length})</span>
+                    </div>
+                  )}
+
+                  {/* Published approved articles */}
+                  {approvedArticles.filter(item => item.published).map((item) => (
+                    <div key={item.dbId || item.id} className="feed-item approved published-article">
+                      <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
+                      <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
+                      <div className="feed-description">{cleanDescription(item.description)}</div>
+                      <div className="feed-meta">
+                        <span className="feed-date">{formatDate(item.pubDate)}</span>
+                        <div className="feed-actions">
+                          <button
+                            className="btn-visit"
+                            onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          >
+                            View Article
+                          </button>
+                          <button
+                            className="btn-approve approved"
+                            onClick={() => {
+                              const tempItem = { ...item, id: item.dbId, approved: true };
+                              toggleApproval(tempItem);
+                            }}
+                          >
+                            Unapprove
+                          </button>
+                          <button
+                            className="btn-publish published"
+                            onClick={() => unpublishArticle(item)}
+                          >
+                            Unpublish
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )
             ) : (
               junkArticles.length === 0 ? (
@@ -1743,6 +1838,40 @@ export default function Home() {
           box-shadow: 0 2px 6px rgba(220,38,38,0.3);
         }
 
+        .btn-publish {
+          padding: 8px 16px;
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 7px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-publish:hover:not(:disabled) {
+          background: #1d4ed8;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+        }
+
+        .btn-publish.published {
+          background: #94a3b8;
+          cursor: pointer;
+        }
+
+        .btn-publish.published:hover {
+          background: #64748b;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(148,163,184,0.3);
+        }
+
+        .published-article {
+          opacity: 0.6;
+        }
+
         .notes-header {
           padding: 28px 32px;
           background: linear-gradient(135deg, #002855 0%, #003d82 100%);
@@ -1795,7 +1924,7 @@ export default function Home() {
 
         .notes-textarea {
           width: 100%;
-          min-height: 200px;
+          min-height: 500px;
           padding: 16px;
           border: 2px solid #e1e8ed;
           border-radius: 12px;
@@ -1826,7 +1955,7 @@ export default function Home() {
         .btn-ai {
           flex: 1;
           padding: 12px 24px;
-          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
           color: white;
           border: none;
           border-radius: 8px;
@@ -1835,12 +1964,12 @@ export default function Home() {
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           transition: all 0.2s;
-          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.25);
+          box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
         }
 
         .btn-ai:hover:not(:disabled) {
-          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
           transform: translateY(-1px);
         }
 
