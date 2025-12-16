@@ -739,6 +739,34 @@ export default function Home() {
     showStatus(newValue ? '✅ Background refresh enabled' : '⏸️ Background refresh paused');
   };
 
+  const fetchArticleContent = async (article) => {
+    try {
+      showStatus('📄 Fetching article content...', 5000);
+
+      const response = await fetch('/api/fetch-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: article.link })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch article');
+      }
+
+      const data = await response.json();
+
+      // Add article content to notes
+      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
+      setNotes(prevNotes => prevNotes + articleNote);
+
+      showStatus('✅ Article content added to notes!');
+    } catch (error) {
+      console.error('Error fetching article:', error);
+      showStatus(`❌ Error: ${error.message}`);
+    }
+  };
+
   const handleMouseDown = () => {
     setIsDragging(true);
   };
@@ -1045,7 +1073,8 @@ export default function Home() {
                         <div className="feed-actions">
                         <button
                           className="btn-visit"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          onClick={() => fetchArticleContent(item)}
+                          title="Add article content to research notes"
                         >
                           View Article
                         </button>
@@ -1134,7 +1163,8 @@ export default function Home() {
                       <div className="feed-actions">
                         <button
                           className="btn-visit"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          onClick={() => fetchArticleContent(item)}
+                          title="Add article content to research notes"
                         >
                           View Article
                         </button>
@@ -1344,7 +1374,8 @@ export default function Home() {
                       <div className="feed-actions">
                         <button
                           className="btn-visit"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          onClick={() => fetchArticleContent(item)}
+                          title="Add article content to research notes"
                         >
                           View Article
                         </button>

@@ -1,0 +1,114 @@
+import { parse } from 'node-html-parser';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+
+  try {
+    console.log(`[Fetch Article] Fetching content from: ${url}`);
+
+    // Fetch the article with a timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; RSS Reader/1.0)',
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    const root = parse(html);
+
+    // Try to extract the main content using common article selectors
+    let content = '';
+
+    // Try article tag first
+    const article = root.querySelector('article');
+    if (article) {
+      content = article.textContent;
+    }
+
+    // Try common content selectors
+    if (!content) {
+      const selectors = [
+        '.article-content',
+        '.story-body',
+        '.article-body',
+        '.post-content',
+        '.entry-content',
+        'main',
+        '.content'
+      ];
+
+      for (const selector of selectors) {
+        const element = root.querySelector(selector);
+        if (element && element.textContent.length > 200) {
+          content = element.textContent;
+          break;
+        }
+      }
+    }
+
+    // If still no content, try to get all paragraphs
+    if (!content) {
+      const paragraphs = root.querySelectorAll('p');
+      content = paragraphs.map(p => p.textContent).join('\n\n');
+    }
+
+    // Clean up the content
+    content = content
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple newlines with double newline
+      .trim();
+
+    // Get the title
+    let title = '';
+    const titleTag = root.querySelector('title');
+    const h1Tag = root.querySelector('h1');
+
+    if (h1Tag && h1Tag.textContent) {
+      title = h1Tag.textContent.trim();
+    } else if (titleTag && titleTag.textContent) {
+      title = titleTag.textContent.trim();
+    }
+
+    if (!content || content.length < 100) {
+      throw new Error('Could not extract article content');
+    }
+
+    console.log(`[Fetch Article] Successfully extracted ${content.length} characters`);
+
+    return res.status(200).json({
+      success: true,
+      title,
+      content: content.substring(0, 10000), // Limit to 10k characters
+      url
+    });
+
+  } catch (error) {
+    console.error('[Fetch Article] Error:', error.message);
+
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: 'Request timeout' });
+    }
+
+    return res.status(500).json({
+      error: error.message || 'Failed to fetch article content'
+    });
+  }
+}
