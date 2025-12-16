@@ -749,21 +749,27 @@ export default function Home() {
         body: JSON.stringify({ url: article.link })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch article');
+      if (response.ok) {
+        const data = await response.json();
+
+        // Add article content to notes
+        const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
+        setNotes(prevNotes => prevNotes + articleNote);
+
+        showStatus('✅ Full article content added to notes!');
+      } else {
+        // Fallback: open article in new tab if fetch fails
+        console.log('Article fetch failed, opening in new tab');
+        window.open(article.link, '_blank', 'noopener,noreferrer');
+        showStatus('⚠️ Content unavailable - opened in new tab');
       }
 
-      const data = await response.json();
-
-      // Add article content to notes
-      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
-      setNotes(prevNotes => prevNotes + articleNote);
-
-      showStatus('✅ Article content added to notes!');
     } catch (error) {
       console.error('Error fetching article:', error);
-      showStatus(`❌ Error: ${error.message}`);
+
+      // Fallback: open article in new tab
+      window.open(article.link, '_blank', 'noopener,noreferrer');
+      showStatus('⚠️ Could not fetch content - opened in new tab');
     }
   };
 
