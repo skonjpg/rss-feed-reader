@@ -769,7 +769,7 @@ export default function Home() {
         const interval = setInterval(() => {
           console.log('Auto-refreshing feeds...');
           loadFeeds(null, true);
-        }, 60000); // 1 minute
+        }, 15000); // 15 seconds - more responsive
         setAutoRefreshInterval(interval);
       }
     } else if (scoredCount === totalCount && totalCount > 0) {
