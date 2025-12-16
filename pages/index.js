@@ -749,31 +749,27 @@ export default function Home() {
         body: JSON.stringify({ url: article.link })
       });
 
-      let content = '';
-
       if (response.ok) {
         const data = await response.json();
-        content = data.content;
+
+        // Add article content to notes
+        const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
+        setNotes(prevNotes => prevNotes + articleNote);
+
         showStatus('✅ Full article content added to notes!');
       } else {
-        // Fallback to RSS description if article fetch fails
-        console.log('Article fetch failed, using RSS description as fallback');
-        content = article.description || 'No description available.';
-        showStatus('⚠️ Using article description (full text unavailable)');
+        // Fallback: open article in new tab if fetch fails
+        console.log('Article fetch failed, opening in new tab');
+        window.open(article.link, '_blank', 'noopener,noreferrer');
+        showStatus('⚠️ Content unavailable - opened in new tab');
       }
-
-      // Add article content/description to notes
-      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${content}\n\n---\n`;
-      setNotes(prevNotes => prevNotes + articleNote);
 
     } catch (error) {
       console.error('Error fetching article:', error);
 
-      // Still add the article with description as fallback
-      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${article.description || 'Content unavailable - visit URL to read full article.'}\n\n---\n`;
-      setNotes(prevNotes => prevNotes + articleNote);
-
-      showStatus('⚠️ Added article info (content unavailable)');
+      // Fallback: open article in new tab
+      window.open(article.link, '_blank', 'noopener,noreferrer');
+      showStatus('⚠️ Could not fetch content - opened in new tab');
     }
   };
 
