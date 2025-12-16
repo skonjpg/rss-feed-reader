@@ -33,10 +33,14 @@ export default function Home() {
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
     const loadAll = async () => {
+      console.log('[Initial Load] Starting automatic feed load on mount...');
+
       // Clean up old articles first
+      console.log('[Initial Load] Cleaning up old articles...');
       await fetch('/api/cleanup/old-articles', { method: 'POST' });
 
       // Load all article lists and predictions
+      console.log('[Initial Load] Loading predictions and article lists...');
       const predictions = await loadPredictions();
       await Promise.all([
         loadFlaggedArticles(),
@@ -45,6 +49,7 @@ export default function Home() {
       ]);
 
       // Then load feeds with all the data
+      console.log('[Initial Load] Loading feeds...');
       loadFeeds(predictions);
     };
     loadAll();
@@ -766,30 +771,34 @@ export default function Home() {
 
   // Continuous background refresh to check for new RSS articles every 5 minutes
   useEffect(() => {
-    if (backgroundRefreshEnabled) {
-      console.log('Setting up continuous background refresh (every 5 minutes)');
-      const interval = setInterval(() => {
-        console.log('Background refresh: checking for new articles from RSS feeds...');
-        loadFeeds(null, true);
-      }, 5 * 60 * 1000); // 5 minutes
-      setBackgroundRefreshInterval(interval);
-
-      // Cleanup on unmount or when disabled
-      return () => {
-        if (interval) {
-          console.log('Stopping background refresh');
-          clearInterval(interval);
-        }
-      };
-    } else {
+    if (!backgroundRefreshEnabled) {
       // Clear interval if disabled
       if (backgroundRefreshInterval) {
         console.log('Background refresh disabled by user');
         clearInterval(backgroundRefreshInterval);
         setBackgroundRefreshInterval(null);
       }
+      return;
     }
-  }, [backgroundRefreshEnabled]); // Re-run when toggle changes
+
+    // Only set up interval if one doesn't exist
+    if (!backgroundRefreshInterval) {
+      console.log('Setting up continuous background refresh (every 60 seconds for testing)');
+      const interval = setInterval(() => {
+        console.log('Background refresh: checking for new articles from RSS feeds...');
+        loadFeeds(null, true);
+      }, 60 * 1000); // 60 seconds for easier testing (change to 5 * 60 * 1000 for production)
+      setBackgroundRefreshInterval(interval);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (backgroundRefreshInterval) {
+        console.log('Cleaning up background refresh interval');
+        clearInterval(backgroundRefreshInterval);
+      }
+    };
+  }, [backgroundRefreshEnabled, backgroundRefreshInterval]); // Added backgroundRefreshInterval to deps
 
   // Fast auto-refresh for scoring unscored articles (every 15 seconds)
   useEffect(() => {
@@ -806,20 +815,22 @@ export default function Home() {
     const scoredCount = allArticles.filter(item => confidenceScores[item.link] !== undefined).length;
     const totalCount = allArticles.length;
 
+    console.log(`[Fast Refresh Check] Total: ${totalCount}, Scored: ${scoredCount}, Scoring: ${scoringInProgress}, Interval exists: ${!!autoRefreshInterval}`);
+
     // If there are unscored articles, set up fast refresh for scoring
     if (totalCount > 0 && scoredCount < totalCount && !scoringInProgress) {
       if (!autoRefreshInterval) {
-        console.log(`Setting up fast scoring refresh: ${scoredCount}/${totalCount} scored`);
+        console.log(`[Fast Refresh] Setting up interval: ${scoredCount}/${totalCount} scored`);
         const interval = setInterval(() => {
-          console.log('Fast refresh: scoring unscored articles...');
+          console.log('[Fast Refresh] Triggering refresh to score articles...');
           loadFeeds(null, true);
-        }, 15000); // 15 seconds - fast for scoring
+        }, 15000); // 15 seconds
         setAutoRefreshInterval(interval);
       }
     } else if (scoredCount === totalCount && totalCount > 0) {
-      // All articles are scored, clear the fast interval (background refresh continues)
+      // All articles are scored, clear the interval
       if (autoRefreshInterval) {
-        console.log('All articles scored, stopping fast refresh (background refresh continues)');
+        console.log('[Fast Refresh] All articles scored, clearing interval');
         clearInterval(autoRefreshInterval);
         setAutoRefreshInterval(null);
       }
@@ -980,7 +991,7 @@ export default function Home() {
                       <div className="refresh-status-bar-fill" style={{ width: '0%' }}></div>
                     </div>
                     <span className="refresh-status-text">
-                      {backgroundRefreshEnabled ? '🔄 Auto-refresh enabled (checks every 5 min)' : '⏸️ Auto-refresh paused'}
+                      {backgroundRefreshEnabled ? '🔄 Auto-refresh enabled (checks every 60 sec)' : '⏸️ Auto-refresh paused'}
                     </span>
                   </div>
                 )}
