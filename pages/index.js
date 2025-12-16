@@ -17,6 +17,7 @@ export default function Home() {
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
+  const [backgroundRefreshInterval, setBackgroundRefreshInterval] = useState(null);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
   const [addingManualArticle, setAddingManualArticle] = useState(false);
 
@@ -747,7 +748,24 @@ export default function Home() {
     };
   }, [isDragging]);
 
-  // Auto-refresh every 2 minutes until all articles are scored
+  // Continuous background refresh to check for new RSS articles every 5 minutes
+  useEffect(() => {
+    console.log('Setting up continuous background refresh (every 5 minutes)');
+    const interval = setInterval(() => {
+      console.log('Background refresh: checking for new articles from RSS feeds...');
+      loadFeeds(null, true);
+    }, 5 * 60 * 1000); // 5 minutes
+    setBackgroundRefreshInterval(interval);
+
+    // Cleanup on unmount
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, []); // Empty dependency array - only set up once on mount
+
+  // Fast auto-refresh for scoring unscored articles (every 15 seconds)
   useEffect(() => {
     // Calculate unscored articles
     const allArticles = [...feedItems]
@@ -762,20 +780,20 @@ export default function Home() {
     const scoredCount = allArticles.filter(item => confidenceScores[item.link] !== undefined).length;
     const totalCount = allArticles.length;
 
-    // If there are unscored articles, set up auto-refresh
+    // If there are unscored articles, set up fast refresh for scoring
     if (totalCount > 0 && scoredCount < totalCount && !scoringInProgress) {
       if (!autoRefreshInterval) {
-        console.log(`Setting up auto-refresh: ${scoredCount}/${totalCount} scored`);
+        console.log(`Setting up fast scoring refresh: ${scoredCount}/${totalCount} scored`);
         const interval = setInterval(() => {
-          console.log('Auto-refreshing feeds...');
+          console.log('Fast refresh: scoring unscored articles...');
           loadFeeds(null, true);
-        }, 15000); // 15 seconds - more responsive
+        }, 15000); // 15 seconds - fast for scoring
         setAutoRefreshInterval(interval);
       }
     } else if (scoredCount === totalCount && totalCount > 0) {
-      // All articles are scored, clear the interval
+      // All articles are scored, clear the fast interval (background refresh continues)
       if (autoRefreshInterval) {
-        console.log('All articles scored, stopping auto-refresh');
+        console.log('All articles scored, stopping fast refresh (background refresh continues)');
         clearInterval(autoRefreshInterval);
         setAutoRefreshInterval(null);
       }
