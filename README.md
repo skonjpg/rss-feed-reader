@@ -132,14 +132,14 @@ The following environment variables must be set in your Vercel project:
 
 ### Automated Feed Refresh
 
-This app includes an automated cron job that runs **every 30 minutes** to:
+This app includes an automated cron job that runs **once per day at midnight UTC** to:
 - Fetch new articles from RSS feeds
 - Score articles using Claude AI
 - Auto-flag high-confidence articles (>80%)
 - Auto-junk low-confidence articles (≤20%)
 - Clean up old articles (>12 days)
 
-**No manual refresh needed!** The system will automatically keep your feed updated.
+**Note:** Vercel Hobby accounts are limited to daily cron jobs. You can still manually refresh anytime using the "Refresh Feeds" button. Upgrade to Vercel Pro for more frequent automated refreshes (every 30 minutes).
 
 ## 🐛 Troubleshooting
 

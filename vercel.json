@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/cron/refresh-and-score",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
