@@ -749,21 +749,31 @@ export default function Home() {
         body: JSON.stringify({ url: article.link })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch article');
+      let content = '';
+
+      if (response.ok) {
+        const data = await response.json();
+        content = data.content;
+        showStatus('✅ Full article content added to notes!');
+      } else {
+        // Fallback to RSS description if article fetch fails
+        console.log('Article fetch failed, using RSS description as fallback');
+        content = article.description || 'No description available.';
+        showStatus('⚠️ Using article description (full text unavailable)');
       }
 
-      const data = await response.json();
-
-      // Add article content to notes
-      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
+      // Add article content/description to notes
+      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${content}\n\n---\n`;
       setNotes(prevNotes => prevNotes + articleNote);
 
-      showStatus('✅ Article content added to notes!');
     } catch (error) {
       console.error('Error fetching article:', error);
-      showStatus(`❌ Error: ${error.message}`);
+
+      // Still add the article with description as fallback
+      const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${article.description || 'Content unavailable - visit URL to read full article.'}\n\n---\n`;
+      setNotes(prevNotes => prevNotes + articleNote);
+
+      showStatus('⚠️ Added article info (content unavailable)');
     }
   };
 
