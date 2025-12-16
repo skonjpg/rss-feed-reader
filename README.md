@@ -111,7 +111,35 @@ Once deployed, your app will be live at `https://your-app.vercel.app`
 
 ## 🔒 Environment Variables
 
-This app doesn't require any environment variables! Just deploy and it works.
+### Required Environment Variables
+
+The following environment variables must be set in your Vercel project:
+
+- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for server-side operations)
+- `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude AI
+- `N8N_WEBHOOK_URL` - Your n8n webhook URL (optional, for article summarization)
+- `CRON_SECRET` - A secret string to secure the automated cron endpoint (e.g., a random UUID)
+
+### Setting Environment Variables in Vercel
+
+1. Go to your Vercel project dashboard
+2. Navigate to **Settings** → **Environment Variables**
+3. Add each variable with its value
+4. Click **Save**
+5. Redeploy your application for changes to take effect
+
+### Automated Feed Refresh
+
+This app includes an automated cron job that runs **once per day at midnight UTC** to:
+- Fetch new articles from RSS feeds
+- Score articles using Claude AI
+- Auto-flag high-confidence articles (>80%)
+- Auto-junk low-confidence articles (≤20%)
+- Clean up old articles (>12 days)
+
+**Note:** Vercel Hobby accounts are limited to daily cron jobs. You can still manually refresh anytime using the "Refresh Feeds" button. Upgrade to Vercel Pro for more frequent automated refreshes (every 30 minutes).
 
 ## 🐛 Troubleshooting
 

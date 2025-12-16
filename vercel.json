@@ -3,5 +3,11 @@
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/refresh-and-score",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
