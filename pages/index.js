@@ -753,7 +753,7 @@ export default function Home() {
         const data = await response.json();
 
         // Add article content to notes
-        const articleNote = `\n\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n\n---\n`;
+        const articleNote = `\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
         setNotes(prevNotes => prevNotes + articleNote);
 
         showStatus('✅ Full article content added to notes!');
