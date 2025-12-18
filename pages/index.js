@@ -738,31 +738,31 @@ export default function Home() {
     showStatus(newValue ? '⏸️ Auto-refresh paused' : '▶️ Auto-refresh resumed');
   };
 
-  const deleteAllJunk = async () => {
-    if (!confirm(`Delete all ${junkArticles.length} junk articles from database?\n\nThis will permanently remove them and they won't be used for training.`)) {
+  const deleteJunkArticle = async (item) => {
+    if (!confirm(`Permanently delete "${item.title}" from database?\n\nThis will remove it from training data.`)) {
       return;
     }
 
     try {
-      showStatus('🗑️ Deleting junk articles...', 3000);
+      showStatus('🗑️ Deleting article...', 3000);
 
       const response = await fetch('/api/articles/delete-junk', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link: item.link })
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to delete junk articles');
+        throw new Error(error.error || 'Failed to delete article');
       }
 
-      const data = await response.json();
+      // Remove from junk articles list
+      setJunkArticles(junkArticles.filter(a => a.link !== item.link));
 
-      // Reload junk articles list (should be empty now)
-      setJunkArticles([]);
-
-      showStatus(`✅ Deleted ${data.deleted} junk articles!`);
+      showStatus(`✅ Article deleted from database!`);
     } catch (error) {
-      console.error('Error deleting junk articles:', error);
+      console.error('Error deleting junk article:', error);
       showStatus(`❌ Error: ${error.message}`);
     }
   };
@@ -1004,15 +1004,6 @@ export default function Home() {
               >
                 {autoRefreshPaused ? '▶️' : '⏸️'}
               </button>
-              {activeTab === 'junk' && junkArticles.length > 0 && (
-                <button
-                  onClick={deleteAllJunk}
-                  className="btn-danger"
-                  title="Permanently delete all junk articles"
-                >
-                  🗑️ Delete All Junk
-                </button>
-              )}
             </div>
           </div>
 
@@ -1369,6 +1360,13 @@ export default function Home() {
                           }}
                         >
                           Remove from Junk
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={() => deleteJunkArticle(item)}
+                          title="Permanently delete from database"
+                        >
+                          Delete
                         </button>
                       </div>
                     </div>

@@ -6,37 +6,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('[Delete Junk] Deleting all junk articles from database...');
+    const { link } = req.body;
 
-    // Delete all junk articles
-    const { data, error } = await supabase
+    if (!link) {
+      return res.status(400).json({ error: 'Article link is required' });
+    }
+
+    console.log(`[Delete Junk] Deleting article with link: ${link}`);
+
+    // Delete the specific junk article
+    const { error } = await supabase
       .from('junk_articles')
       .delete()
-      .neq('link', ''); // Delete all rows (neq with empty string as workaround)
+      .eq('link', link);
 
     if (error) {
       console.error('[Delete Junk] Error:', error);
       return res.status(500).json({
-        error: 'Failed to delete junk articles',
+        error: 'Failed to delete junk article',
         details: error.message
       });
     }
 
-    // Count deleted articles (data contains deleted rows)
-    const deletedCount = data?.length || 0;
-
-    console.log(`[Delete Junk] Successfully deleted ${deletedCount} junk articles`);
+    console.log(`[Delete Junk] Successfully deleted article`);
 
     return res.status(200).json({
       success: true,
-      deleted: deletedCount,
-      message: `Deleted ${deletedCount} junk articles`
+      message: 'Article deleted from database'
     });
 
   } catch (error) {
     console.error('[Delete Junk] Error:', error);
     return res.status(500).json({
-      error: 'Failed to delete junk articles',
+      error: 'Failed to delete junk article',
       details: error.message
     });
   }
