@@ -17,8 +17,17 @@ export default function Home() {
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
+  const [autoRefreshPaused, setAutoRefreshPaused] = useState(false);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
   const [addingManualArticle, setAddingManualArticle] = useState(false);
+
+  // Load auto-refresh pause preference from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('autoRefreshPaused');
+    if (saved !== null) {
+      setAutoRefreshPaused(saved === 'true');
+    }
+  }, []);
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -722,6 +731,13 @@ export default function Home() {
     }
   };
 
+  const toggleAutoRefresh = () => {
+    const newValue = !autoRefreshPaused;
+    setAutoRefreshPaused(newValue);
+    localStorage.setItem('autoRefreshPaused', newValue.toString());
+    showStatus(newValue ? '⏸️ Auto-refresh paused' : '▶️ Auto-refresh resumed');
+  };
+
   const fetchArticleContent = async (article) => {
     try {
       showStatus('📄 Fetching article content...', 5000);
@@ -788,6 +804,16 @@ export default function Home() {
 
   // Fast auto-refresh for scoring unscored articles (every 15 seconds)
   useEffect(() => {
+    // If auto-refresh is paused, clear any existing interval
+    if (autoRefreshPaused) {
+      if (autoRefreshInterval) {
+        console.log('[Fast Refresh] Paused by user, clearing interval');
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+      return;
+    }
+
     // Calculate unscored articles
     const allArticles = [...feedItems]
       .map(item => ({
@@ -801,7 +827,7 @@ export default function Home() {
     const scoredCount = allArticles.filter(item => confidenceScores[item.link] !== undefined).length;
     const totalCount = allArticles.length;
 
-    console.log(`[Fast Refresh Check] Total: ${totalCount}, Scored: ${scoredCount}, Scoring: ${scoringInProgress}, Interval exists: ${!!autoRefreshInterval}`);
+    console.log(`[Fast Refresh Check] Total: ${totalCount}, Scored: ${scoredCount}, Scoring: ${scoringInProgress}, Paused: ${autoRefreshPaused}, Interval exists: ${!!autoRefreshInterval}`);
 
     // If there are unscored articles, set up fast refresh for scoring
     if (totalCount > 0 && scoredCount < totalCount && !scoringInProgress) {
@@ -828,7 +854,7 @@ export default function Home() {
         clearInterval(autoRefreshInterval);
       }
     };
-  }, [feedItems, approvedArticles, flaggedArticles, junkArticles, confidenceScores, scoringInProgress]);
+  }, [feedItems, approvedArticles, flaggedArticles, junkArticles, confidenceScores, scoringInProgress, autoRefreshPaused]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -938,9 +964,18 @@ export default function Home() {
               <span className="ml-stats-icon">🤖</span>
               <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
-            <button onClick={() => loadFeeds(null, true)} disabled={loading} className="btn-primary">
-              {loading ? 'Loading...' : 'Refresh Feeds'}
-            </button>
+            <div className="refresh-controls">
+              <button onClick={() => loadFeeds(null, true)} disabled={loading} className="btn-primary">
+                {loading ? 'Loading...' : 'Refresh Feeds'}
+              </button>
+              <button
+                onClick={toggleAutoRefresh}
+                className={`btn-icon ${autoRefreshPaused ? 'paused' : 'active'}`}
+                title={autoRefreshPaused ? 'Resume auto-refresh' : 'Pause auto-refresh'}
+              >
+                {autoRefreshPaused ? '▶️' : '⏸️'}
+              </button>
+            </div>
           </div>
 
           <div className="feed-list">
@@ -1520,6 +1555,51 @@ export default function Home() {
           opacity: 0.5;
           cursor: not-allowed;
           transform: none;
+        }
+
+        .refresh-controls {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .btn-icon {
+          padding: 10px 14px;
+          background: transparent;
+          border: 2px solid #e1e8ed;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 16px;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .btn-icon:hover {
+          border-color: #002855;
+          background: #f8fafc;
+        }
+
+        .btn-icon.active {
+          border-color: #10b981;
+          background: #ecfdf5;
+        }
+
+        .btn-icon.active:hover {
+          border-color: #059669;
+          background: #d1fae5;
+        }
+
+        .btn-icon.paused {
+          border-color: #f59e0b;
+          background: #fef3c7;
+        }
+
+        .btn-icon.paused:hover {
+          border-color: #d97706;
+          background: #fde68a;
         }
 
         .btn-secondary {
