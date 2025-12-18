@@ -17,18 +17,8 @@ export default function Home() {
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
-  const [backgroundRefreshInterval, setBackgroundRefreshInterval] = useState(null);
-  const [backgroundRefreshEnabled, setBackgroundRefreshEnabled] = useState(true);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
   const [addingManualArticle, setAddingManualArticle] = useState(false);
-
-  // Load background refresh preference from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('backgroundRefreshEnabled');
-    if (saved !== null) {
-      setBackgroundRefreshEnabled(saved === 'true');
-    }
-  }, []);
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -732,13 +722,6 @@ export default function Home() {
     }
   };
 
-  const toggleBackgroundRefresh = () => {
-    const newValue = !backgroundRefreshEnabled;
-    setBackgroundRefreshEnabled(newValue);
-    localStorage.setItem('backgroundRefreshEnabled', newValue.toString());
-    showStatus(newValue ? '✅ Background refresh enabled' : '⏸️ Background refresh paused');
-  };
-
   const fetchArticleContent = async (article) => {
     try {
       showStatus('📄 Fetching article content...', 5000);
@@ -802,37 +785,6 @@ export default function Home() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging]);
-
-  // Continuous background refresh to check for new RSS articles every 5 minutes
-  useEffect(() => {
-    if (!backgroundRefreshEnabled) {
-      // Clear interval if disabled
-      if (backgroundRefreshInterval) {
-        console.log('Background refresh disabled by user');
-        clearInterval(backgroundRefreshInterval);
-        setBackgroundRefreshInterval(null);
-      }
-      return;
-    }
-
-    // Only set up interval if one doesn't exist
-    if (!backgroundRefreshInterval) {
-      console.log('Setting up continuous background refresh (every 60 seconds for testing)');
-      const interval = setInterval(() => {
-        console.log('Background refresh: checking for new articles from RSS feeds...');
-        loadFeeds(null, true);
-      }, 60 * 1000); // 60 seconds for easier testing (change to 5 * 60 * 1000 for production)
-      setBackgroundRefreshInterval(interval);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (backgroundRefreshInterval) {
-        console.log('Cleaning up background refresh interval');
-        clearInterval(backgroundRefreshInterval);
-      }
-    };
-  }, [backgroundRefreshEnabled, backgroundRefreshInterval]); // Added backgroundRefreshInterval to deps
 
   // Fast auto-refresh for scoring unscored articles (every 15 seconds)
   useEffect(() => {
@@ -982,62 +934,13 @@ export default function Home() {
                 Junk ({junkArticles.length})
               </button>
             </div>
-            {/* Auto-refresh loading bar */}
-            <div className="auto-refresh-container">
-              <div className="refresh-status-wrapper">
-                {loading ? (
-                  <div className="refresh-status">
-                    <div className="refresh-status-bar loading-bar">
-                      <div className="refresh-status-bar-fill loading-animation"></div>
-                    </div>
-                    <span className="refresh-status-text">📡 Fetching feeds...</span>
-                  </div>
-                ) : scoringInProgress ? (
-                  <div className="refresh-status">
-                    <div className="refresh-status-bar">
-                      <div
-                        className="refresh-status-bar-fill scoring-animation"
-                        style={{ width: `${sortedItems.length > 0 ? (scoredInAllArticles / sortedItems.length) * 100 : 0}%` }}
-                      ></div>
-                    </div>
-                    <span className="refresh-status-text">🤖 Scoring articles... ({scoredInAllArticles}/{sortedItems.length})</span>
-                  </div>
-                ) : sortedItems.length > 0 && scoredInAllArticles < sortedItems.length ? (
-                  <div className="refresh-status">
-                    <div className="refresh-status-bar">
-                      <div
-                        className="refresh-status-bar-fill"
-                        style={{ width: `${(scoredInAllArticles / sortedItems.length) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="refresh-status-text">⏳ Auto-refresh in progress... ({scoredInAllArticles}/{sortedItems.length} scored)</span>
-                  </div>
-                ) : sortedItems.length > 0 ? (
-                  <div className="refresh-status">
-                    <div className="refresh-status-bar complete">
-                      <div className="refresh-status-bar-fill complete" style={{ width: '100%' }}></div>
-                    </div>
-                    <span className="refresh-status-text">✅ All {scoredInAllArticles} articles scored</span>
-                  </div>
-                ) : (
-                  <div className="refresh-status">
-                    <div className="refresh-status-bar">
-                      <div className="refresh-status-bar-fill" style={{ width: '0%' }}></div>
-                    </div>
-                    <span className="refresh-status-text">
-                      {backgroundRefreshEnabled ? '🔄 Auto-refresh enabled (checks every 60 sec)' : '⏸️ Auto-refresh paused'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={toggleBackgroundRefresh}
-                className={`refresh-toggle-btn ${backgroundRefreshEnabled ? 'enabled' : 'disabled'}`}
-                title={backgroundRefreshEnabled ? 'Pause background refresh' : 'Enable background refresh'}
-              >
-                {backgroundRefreshEnabled ? '⏸️' : '▶️'}
-              </button>
+            <div className="ml-stats">
+              <span className="ml-stats-icon">🤖</span>
+              <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
+            <button onClick={() => loadFeeds(null, true)} disabled={loading} className="btn-primary">
+              {loading ? 'Loading...' : 'Refresh Feeds'}
+            </button>
           </div>
 
           <div className="feed-list">
@@ -1617,118 +1520,6 @@ export default function Home() {
           opacity: 0.5;
           cursor: not-allowed;
           transform: none;
-        }
-
-        .auto-refresh-container {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex: 1;
-          max-width: 400px;
-        }
-
-        .refresh-status-wrapper {
-          flex: 1;
-        }
-
-        .refresh-status {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .refresh-status-bar {
-          height: 6px;
-          background: #e5e7eb;
-          border-radius: 3px;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .refresh-status-bar.complete {
-          background: #d1fae5;
-        }
-
-        .refresh-status-bar-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #002855 0%, #003d82 100%);
-          border-radius: 3px;
-          transition: width 0.3s ease;
-        }
-
-        .refresh-status-bar-fill.complete {
-          background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-        }
-
-        .refresh-status-bar-fill.loading-animation {
-          width: 100%;
-          background: linear-gradient(90deg,
-            #002855 0%,
-            #003d82 25%,
-            #0056b3 50%,
-            #003d82 75%,
-            #002855 100%
-          );
-          background-size: 200% 100%;
-          animation: loading-slide 1.5s linear infinite;
-        }
-
-        .refresh-status-bar-fill.scoring-animation {
-          background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%);
-        }
-
-        @keyframes loading-slide {
-          0% {
-            background-position: 200% 0;
-          }
-          100% {
-            background-position: -200% 0;
-          }
-        }
-
-        .refresh-status-text {
-          font-size: 12px;
-          color: #64748b;
-          font-weight: 500;
-        }
-
-        .refresh-toggle-btn {
-          padding: 8px 12px;
-          background: transparent;
-          border: 2px solid #e1e8ed;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 16px;
-          transition: all 0.2s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 42px;
-        }
-
-        .refresh-toggle-btn:hover {
-          border-color: #002855;
-          background: #f8fafc;
-        }
-
-        .refresh-toggle-btn.enabled {
-          border-color: #10b981;
-          color: #10b981;
-        }
-
-        .refresh-toggle-btn.enabled:hover {
-          background: #ecfdf5;
-          border-color: #059669;
-        }
-
-        .refresh-toggle-btn.disabled {
-          border-color: #fbbf24;
-          color: #f59e0b;
-        }
-
-        .refresh-toggle-btn.disabled:hover {
-          background: #fef3c7;
-          border-color: #f59e0b;
         }
 
         .btn-secondary {
