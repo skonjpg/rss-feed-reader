@@ -34,8 +34,38 @@ export default async function handler(req, res) {
     // Auto-flag high confidence articles and auto-junk low confidence articles
     const autoFlagged = [];
     const autoJunked = [];
+    const autoDeleted = [];
 
     for (const article of scoredArticles) {
+      // Check if article should be auto-deleted (only junk keywords)
+      if (article.shouldAutoDelete) {
+        console.log(`[Auto-Delete] Article "${article.title}" - only junk keywords`);
+
+        // Add to junk articles table
+        await supabase
+          .from('junk_articles')
+          .upsert({
+            article_id: article.id?.toString() || '',
+            title: article.title,
+            description: article.description || '',
+            link: article.link,
+            pub_date: article.pubDate,
+            source: article.source || 'unknown',
+            source_name: article.sourceName || 'Unknown'
+          }, {
+            onConflict: 'link',
+            ignoreDuplicates: true
+          });
+
+        autoDeleted.push({
+          title: article.title,
+          keywords: article.reasoning
+        });
+
+        // Skip storing prediction for deleted articles
+        continue;
+      }
+
       // Store prediction in article_predictions table
       const { error: predError } = await supabase
         .from('article_predictions')
@@ -107,7 +137,7 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log(`Scored ${scoredArticles.length} articles, auto-flagged ${autoFlagged.length}, auto-junked ${autoJunked.length}`);
+    console.log(`Scored ${scoredArticles.length} articles, auto-flagged ${autoFlagged.length}, auto-junked ${autoJunked.length}, auto-deleted ${autoDeleted.length}`);
 
     return res.status(200).json({
       success: true,
@@ -115,13 +145,16 @@ export default async function handler(req, res) {
       total: articles.length,
       autoFlagged: autoFlagged.length,
       autoJunked: autoJunked.length,
+      autoDeleted: autoDeleted.length,
       autoFlaggedArticles: autoFlagged,
       autoJunkedArticles: autoJunked,
+      autoDeletedArticles: autoDeleted,
       articles: scoredArticles.map(a => ({
         link: a.link,
         title: a.title,
         confidence: a.confidence,
-        reasoning: a.reasoning
+        reasoning: a.reasoning,
+        shouldAutoDelete: a.shouldAutoDelete || false
       }))
     });
 
