@@ -738,6 +738,35 @@ export default function Home() {
     showStatus(newValue ? '⏸️ Auto-refresh paused' : '▶️ Auto-refresh resumed');
   };
 
+  const deleteAllJunk = async () => {
+    if (!confirm(`Delete all ${junkArticles.length} junk articles from database?\n\nThis will permanently remove them and they won't be used for training.`)) {
+      return;
+    }
+
+    try {
+      showStatus('🗑️ Deleting junk articles...', 3000);
+
+      const response = await fetch('/api/articles/delete-junk', {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete junk articles');
+      }
+
+      const data = await response.json();
+
+      // Reload junk articles list (should be empty now)
+      setJunkArticles([]);
+
+      showStatus(`✅ Deleted ${data.deleted} junk articles!`);
+    } catch (error) {
+      console.error('Error deleting junk articles:', error);
+      showStatus(`❌ Error: ${error.message}`);
+    }
+  };
+
   const fetchArticleContent = async (article) => {
     try {
       showStatus('📄 Fetching article content...', 5000);
@@ -975,6 +1004,15 @@ export default function Home() {
               >
                 {autoRefreshPaused ? '▶️' : '⏸️'}
               </button>
+              {activeTab === 'junk' && junkArticles.length > 0 && (
+                <button
+                  onClick={deleteAllJunk}
+                  className="btn-danger"
+                  title="Permanently delete all junk articles"
+                >
+                  🗑️ Delete All Junk
+                </button>
+              )}
             </div>
           </div>
 
@@ -1600,6 +1638,26 @@ export default function Home() {
         .btn-icon.paused:hover {
           border-color: #d97706;
           background: #fde68a;
+        }
+
+        .btn-danger {
+          padding: 10px 20px;
+          background: #dc2626;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(220, 38, 38, 0.15);
+        }
+
+        .btn-danger:hover {
+          background: #b91c1c;
+          box-shadow: 0 4px 8px rgba(220, 38, 38, 0.25);
+          transform: translateY(-1px);
         }
 
         .btn-secondary {
