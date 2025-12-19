@@ -1052,6 +1052,13 @@ export default function Home() {
                           View Article
                         </button>
                         <button
+                          className="btn-link"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          title="Open article in new tab"
+                        >
+                          Visit Page
+                        </button>
+                        <button
                           className={`btn-flag ${item.flagged ? 'flagged' : ''}`}
                           onClick={() => toggleFlag(item)}
                         >
@@ -1140,6 +1147,13 @@ export default function Home() {
                           title="Add article content to research notes"
                         >
                           View Article
+                        </button>
+                        <button
+                          className="btn-link"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          title="Open article in new tab"
+                        >
+                          Visit Page
                         </button>
                         <button
                           className="btn-flag"
@@ -1351,6 +1365,13 @@ export default function Home() {
                           title="Add article content to research notes"
                         >
                           View Article
+                        </button>
+                        <button
+                          className="btn-link"
+                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                          title="Open article in new tab"
+                        >
+                          Visit Page
                         </button>
                         <button
                           className="btn-junk junked"
@@ -1986,6 +2007,26 @@ export default function Home() {
           background: #002855;
           color: white;
           transform: translateY(-1px);
+        }
+
+        .btn-link {
+          padding: 8px 16px;
+          background: transparent;
+          color: #6366f1;
+          border: 2px solid #6366f1;
+          border-radius: 7px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-link:hover {
+          background: #6366f1;
+          color: white;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(99,102,241,0.3);
         }
 
         .btn-junk {

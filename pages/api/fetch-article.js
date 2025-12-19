@@ -20,13 +20,13 @@ export default async function handler(req, res) {
     // Try ScrapeDo first if API key is configured
     if (process.env.SCRAPE_DO_API_KEY) {
       try {
-        console.log('[Fetch Article] Using ScrapeDo proxy service...');
+        console.log('[Fetch Article] Using ScrapeDo proxy service with super mode...');
 
-        // Add render=true for JavaScript-heavy sites like Reuters/Bloomberg
-        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&render=true`;
+        // Use super=true for advanced anti-bot protection (better for Reuters/Bloomberg)
+        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&super=true`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for rendering
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for super mode
 
         const response = await fetch(scrapeDoUrl, {
           signal: controller.signal
@@ -37,13 +37,16 @@ export default async function handler(req, res) {
         if (response.ok) {
           html = await response.text();
           usedScrapeDo = true;
-          console.log('[Fetch Article] Successfully fetched via ScrapeDo with rendering');
+          console.log(`[Fetch Article] Successfully fetched via ScrapeDo (${html.length} bytes)`);
         } else {
-          console.log(`[Fetch Article] ScrapeDo failed with status ${response.status}, falling back to direct fetch`);
+          const errorText = await response.text();
+          console.log(`[Fetch Article] ScrapeDo failed with status ${response.status}: ${errorText.substring(0, 200)}`);
         }
       } catch (scrapeDoError) {
         console.log('[Fetch Article] ScrapeDo error, falling back to direct fetch:', scrapeDoError.message);
       }
+    } else {
+      console.log('[Fetch Article] SCRAPE_DO_API_KEY not configured, skipping ScrapeDo');
     }
 
     // Fallback to direct fetch if ScrapeDo not configured or failed
@@ -187,10 +190,12 @@ export default async function handler(req, res) {
     }
 
     if (!content || content.length < 100) {
+      console.log(`[Fetch Article] Failed to extract content. HTML length: ${html?.length || 0}`);
+      console.log(`[Fetch Article] HTML preview: ${html?.substring(0, 500)}`);
       throw new Error('Could not extract article content');
     }
 
-    console.log(`[Fetch Article] Successfully extracted ${content.length} characters ${usedScrapeDo ? 'via ScrapeDo with rendering' : 'via direct fetch'}`);
+    console.log(`[Fetch Article] Successfully extracted ${content.length} characters ${usedScrapeDo ? 'via ScrapeDo super mode' : 'via direct fetch'}`);
 
     return res.status(200).json({
       success: true,
