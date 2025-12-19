@@ -14,30 +14,66 @@ export default async function handler(req, res) {
   try {
     console.log(`[Fetch Article] Fetching content from: ${url}`);
 
-    // Fetch the article with a timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    let html;
+    let usedScrapeDo = false;
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
-      },
-      signal: controller.signal
-    });
+    // Try ScrapeDo first if API key is configured
+    if (process.env.SCRAPE_DO_API_KEY) {
+      try {
+        console.log('[Fetch Article] Using ScrapeDo proxy service...');
 
-    clearTimeout(timeoutId);
+        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}`;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for ScrapeDo
+
+        const response = await fetch(scrapeDoUrl, {
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          html = await response.text();
+          usedScrapeDo = true;
+          console.log('[Fetch Article] Successfully fetched via ScrapeDo');
+        } else {
+          console.log(`[Fetch Article] ScrapeDo failed with status ${response.status}, falling back to direct fetch`);
+        }
+      } catch (scrapeDoError) {
+        console.log('[Fetch Article] ScrapeDo error, falling back to direct fetch:', scrapeDoError.message);
+      }
     }
 
-    const html = await response.text();
+    // Fallback to direct fetch if ScrapeDo not configured or failed
+    if (!html) {
+      console.log('[Fetch Article] Using direct fetch...');
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      html = await response.text();
+    }
+
     const root = parse(html);
 
     // Try to extract the main content using common article selectors
@@ -97,13 +133,14 @@ export default async function handler(req, res) {
       throw new Error('Could not extract article content');
     }
 
-    console.log(`[Fetch Article] Successfully extracted ${content.length} characters`);
+    console.log(`[Fetch Article] Successfully extracted ${content.length} characters ${usedScrapeDo ? 'via ScrapeDo' : 'via direct fetch'}`);
 
     return res.status(200).json({
       success: true,
       title,
       content: content.substring(0, 10000), // Limit to 10k characters
-      url
+      url,
+      method: usedScrapeDo ? 'scrapedo' : 'direct'
     });
 
   } catch (error) {
