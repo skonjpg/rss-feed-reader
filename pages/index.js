@@ -1415,6 +1415,23 @@ export default function Home() {
               />
               <div className="notes-actions">
                 <button
+                  onClick={async () => {
+                    try {
+                      const content = await navigator.clipboard.readText();
+                      if (content) {
+                        setNotes(prevNotes => prevNotes + (prevNotes ? '\n\n' : '') + content);
+                        showStatus('✅ Pasted from clipboard!');
+                      }
+                    } catch (err) {
+                      showStatus('❌ Could not read clipboard. Use Ctrl+V to paste manually.');
+                    }
+                  }}
+                  className="btn-paste"
+                  title="Paste article content from clipboard"
+                >
+                  📋 Paste Article
+                </button>
+                <button
                   onClick={summarizeWithAI}
                   disabled={summarizing || !notes.trim()}
                   className="btn-ai"
@@ -2171,6 +2188,26 @@ export default function Home() {
         .notes-actions {
           display: flex;
           gap: 12px;
+        }
+
+        .btn-paste {
+          padding: 12px 24px;
+          background: transparent;
+          color: #10b981;
+          border: 2px solid #10b981;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+        }
+
+        .btn-paste:hover {
+          background: #10b981;
+          color: white;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         .btn-ai {
