@@ -23,11 +23,16 @@ export default async function handler(req, res) {
         // Use super mode only for Reuters/Bloomberg (high anti-bot protection)
         // Use regular mode for other sites to save credits
         const needsSuperMode = url.includes('reuters.com') || url.includes('bloomberg.com');
-        const mode = needsSuperMode ? 'super=true' : 'render=true';
 
-        console.log(`[Fetch Article] Using ScrapeDo ${needsSuperMode ? 'SUPER' : 'regular'} mode for ${url}`);
-
-        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&${mode}`;
+        let scrapeDoUrl;
+        if (needsSuperMode) {
+          // For Bloomberg/Reuters: use super mode + wait for content to load
+          scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&super=true&waitUntil=networkidle`;
+          console.log(`[Fetch Article] Using ScrapeDo SUPER mode with networkidle wait for ${url}`);
+        } else {
+          scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&render=true`;
+          console.log(`[Fetch Article] Using ScrapeDo regular mode for ${url}`);
+        }
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), needsSuperMode ? 60000 : 30000);
