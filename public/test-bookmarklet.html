@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bookmarklet Test Page</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    article {
+      background: #f8f9fa;
+      padding: 30px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    h1 {
+      color: #1e293b;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    p {
+      color: #475569;
+      margin-bottom: 15px;
+    }
+    .test-instructions {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-instructions">
+    <h2>📋 Bookmarklet Test Instructions</h2>
+    <ol>
+      <li><strong>Step 1:</strong> Make sure you've dragged the bookmarklet from <code>/bookmarklet.html</code> to your bookmarks bar</li>
+      <li><strong>Step 2:</strong> Click the bookmarklet in your bookmarks bar (while on this page)</li>
+      <li><strong>Step 3:</strong> You should see a modal appear with the extracted article content</li>
+      <li><strong>Step 4:</strong> The content is automatically saved to:
+        <ul>
+          <li>✅ Clipboard (ready to paste)</li>
+          <li>✅ localStorage (RSS Reader checks every 2s)</li>
+        </ul>
+      </li>
+      <li><strong>Step 5:</strong> Go back to RSS Reader and click <strong>"📋 Paste Article"</strong> button in Research Notes</li>
+    </ol>
+  </div>
+
+  <article>
+    <h1>Test Article: How Neural Networks Learn from Data</h1>
+
+    <p>
+      This is a test article with substantial content to verify the bookmarklet extraction is working correctly.
+      The bookmarklet should capture this entire article, including the title, all paragraphs, and format them properly.
+    </p>
+
+    <h2>Understanding Backpropagation</h2>
+
+    <p>
+      Backpropagation is the fundamental algorithm that allows neural networks to learn from their mistakes.
+      When a neural network makes a prediction, it compares the result to the expected output and calculates an error.
+      This error is then propagated backward through the network, adjusting weights at each layer to minimize future errors.
+    </p>
+
+    <h2>Feature Extraction</h2>
+
+    <p>
+      Neural networks excel at automatic feature extraction. Rather than manually engineering features,
+      the network learns which patterns in the input data are most relevant for making accurate predictions.
+      This is achieved through multiple layers of transformation, where each layer learns increasingly abstract representations.
+    </p>
+
+    <h2>Training Process</h2>
+
+    <p>
+      Training a neural network involves presenting it with many examples and iteratively adjusting its internal parameters.
+      The network starts with random weights and gradually improves its predictions through repeated exposure to training data.
+      The learning rate controls how quickly the network adapts, balancing speed of learning with stability.
+    </p>
+
+    <blockquote>
+      "The goal of machine learning is not to make perfect predictions, but to make predictions that are good enough to be useful." - Anonymous
+    </blockquote>
+
+    <p>
+      Modern neural networks can contain millions of parameters and require significant computational resources to train.
+      However, once trained, they can make predictions extremely quickly, making them practical for real-time applications
+      like article scoring, image recognition, and natural language processing.
+    </p>
+
+    <p>
+      The beauty of neural networks lies in their ability to learn complex patterns without explicit programming.
+      By training on examples, they discover the underlying structure of the data and can generalize to new, unseen inputs.
+      This makes them particularly powerful for tasks where traditional rule-based approaches fall short.
+    </p>
+  </article>
+
+  <div class="success">
+    <h3>✅ What Should Happen:</h3>
+    <ul>
+      <li>Bookmarklet extracts ~8 paragraphs + title</li>
+      <li>Modal shows with "✅ Saved to localStorage"</li>
+      <li>Content automatically copied to clipboard</li>
+      <li>RSS Reader detects it within 2 seconds (if tab is open)</li>
+      <li>OR you can click "📋 Paste Article" button manually</li>
+    </ul>
+  </div>
+
+  <div class="test-instructions">
+    <h3>🔍 Troubleshooting:</h3>
+    <p><strong>If nothing happens when you click the bookmarklet:</strong></p>
+    <ul>
+      <li>Open browser console (F12) and check for JavaScript errors</li>
+      <li>Make sure you dragged the LATEST bookmarklet from the deployed site</li>
+      <li>Try refreshing this page and clicking the bookmarklet again</li>
+      <li>Some browsers block bookmarklets - try Chrome or Firefox</li>
+    </ul>
+
+    <p><strong>If modal appears but content doesn't show in RSS Reader:</strong></p>
+    <ul>
+      <li>Make sure RSS Reader tab is open</li>
+      <li>Wait 2 seconds for localStorage polling to detect content</li>
+      <li>OR click "📋 Paste Article" button in Research Notes (uses clipboard)</li>
+      <li>Check browser console in RSS Reader for "[Bookmarklet]" log messages</li>
+    </ul>
+  </div>
+
+  <script>
+    // Monitor localStorage changes to show when content is detected
+    setInterval(() => {
+      const stored = localStorage.getItem('rss_article_content');
+      if (stored) {
+        console.log('[Test Page] Content in localStorage:', JSON.parse(stored).content.substring(0, 100) + '...');
+      }
+    }, 2000);
+
+    console.log('[Test Page] Open browser console (F12) to see debug messages');
+    console.log('[Test Page] Click the bookmarklet now and watch for messages');
+  </script>
+</body>
+</html>
