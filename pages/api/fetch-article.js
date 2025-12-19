@@ -22,10 +22,11 @@ export default async function handler(req, res) {
       try {
         console.log('[Fetch Article] Using ScrapeDo proxy service...');
 
-        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}`;
+        // Add render=true for JavaScript-heavy sites like Reuters/Bloomberg
+        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&render=true`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for ScrapeDo
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout for rendering
 
         const response = await fetch(scrapeDoUrl, {
           signal: controller.signal
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
         if (response.ok) {
           html = await response.text();
           usedScrapeDo = true;
-          console.log('[Fetch Article] Successfully fetched via ScrapeDo');
+          console.log('[Fetch Article] Successfully fetched via ScrapeDo with rendering');
         } else {
           console.log(`[Fetch Article] ScrapeDo failed with status ${response.status}, falling back to direct fetch`);
         }
@@ -82,40 +83,96 @@ export default async function handler(req, res) {
     // Try article tag first
     const article = root.querySelector('article');
     if (article) {
-      content = article.textContent;
+      const paragraphs = article.querySelectorAll('p');
+      if (paragraphs.length > 0) {
+        content = paragraphs.map(p => p.textContent.trim()).filter(t => t.length > 0).join('\n\n');
+      } else {
+        content = article.textContent;
+      }
+    }
+
+    // Try Reuters-specific selectors
+    if (!content || content.length < 200) {
+      const reutersSelectors = [
+        '[data-testid="paragraph"]',
+        '.article-body__content__17Yit',
+        '.StandardArticleBody_body',
+        '[class*="ArticleBody"]',
+        '[class*="article-body"]'
+      ];
+
+      for (const selector of reutersSelectors) {
+        const elements = root.querySelectorAll(selector);
+        if (elements.length > 0) {
+          content = Array.from(elements).map(el => el.textContent.trim()).filter(t => t.length > 0).join('\n\n');
+          console.log(`[Fetch Article] Found content using Reuters selector: ${selector}`);
+          break;
+        }
+      }
+    }
+
+    // Try Bloomberg-specific selectors
+    if (!content || content.length < 200) {
+      const bloombergSelectors = [
+        '[class*="body-content"]',
+        '[class*="article-body"]',
+        '.body-copy',
+        '[data-component="article-body"]'
+      ];
+
+      for (const selector of bloombergSelectors) {
+        const elements = root.querySelectorAll(selector);
+        if (elements.length > 0) {
+          content = Array.from(elements).map(el => el.textContent.trim()).filter(t => t.length > 0).join('\n\n');
+          console.log(`[Fetch Article] Found content using Bloomberg selector: ${selector}`);
+          break;
+        }
+      }
     }
 
     // Try common content selectors
-    if (!content) {
+    if (!content || content.length < 200) {
       const selectors = [
         '.article-content',
         '.story-body',
         '.article-body',
         '.post-content',
         '.entry-content',
-        'main',
-        '.content'
+        'main article',
+        'main'
       ];
 
       for (const selector of selectors) {
         const element = root.querySelector(selector);
-        if (element && element.textContent.length > 200) {
-          content = element.textContent;
-          break;
+        if (element) {
+          const paragraphs = element.querySelectorAll('p');
+          if (paragraphs.length > 0) {
+            content = Array.from(paragraphs).map(p => p.textContent.trim()).filter(t => t.length > 0).join('\n\n');
+            console.log(`[Fetch Article] Found content using selector: ${selector}`);
+            break;
+          }
         }
       }
     }
 
     // If still no content, try to get all paragraphs
-    if (!content) {
+    if (!content || content.length < 200) {
       const paragraphs = root.querySelectorAll('p');
-      content = paragraphs.map(p => p.textContent).join('\n\n');
+      if (paragraphs.length > 0) {
+        content = Array.from(paragraphs)
+          .map(p => p.textContent.trim())
+          .filter(t => t.length > 50) // Filter out very short paragraphs (likely navigation/ads)
+          .join('\n\n');
+        console.log(`[Fetch Article] Found ${paragraphs.length} paragraphs as fallback`);
+      }
     }
 
-    // Clean up the content
+    // Clean up the content while preserving paragraph structure
     content = content
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple newlines with double newline
+      .split('\n\n') // Split into paragraphs
+      .map(para => para.replace(/\s+/g, ' ').trim()) // Clean each paragraph
+      .filter(para => para.length > 0) // Remove empty paragraphs
+      .join('\n\n') // Rejoin with double newlines
       .trim();
 
     // Get the title
@@ -133,14 +190,15 @@ export default async function handler(req, res) {
       throw new Error('Could not extract article content');
     }
 
-    console.log(`[Fetch Article] Successfully extracted ${content.length} characters ${usedScrapeDo ? 'via ScrapeDo' : 'via direct fetch'}`);
+    console.log(`[Fetch Article] Successfully extracted ${content.length} characters ${usedScrapeDo ? 'via ScrapeDo with rendering' : 'via direct fetch'}`);
 
     return res.status(200).json({
       success: true,
       title,
-      content: content.substring(0, 10000), // Limit to 10k characters
+      content: content.substring(0, 50000), // Limit to 50k characters for full articles
       url,
-      method: usedScrapeDo ? 'scrapedo' : 'direct'
+      method: usedScrapeDo ? 'scrapedo' : 'direct',
+      fullLength: content.length
     });
 
   } catch (error) {
