@@ -1053,8 +1053,13 @@ export default function Home() {
                         </button>
                         <button
                           className="btn-link"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                          title="Open article in new tab"
+                          onClick={() => {
+                            // Open article in new tab for reading
+                            window.open(item.link, '_blank', 'noopener,noreferrer');
+                            // Also extract content in background
+                            fetchArticleContent(item);
+                          }}
+                          title="Open article + auto-extract content"
                         >
                           Visit Page
                         </button>
@@ -1150,8 +1155,13 @@ export default function Home() {
                         </button>
                         <button
                           className="btn-link"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                          title="Open article in new tab"
+                          onClick={() => {
+                            // Open article in new tab for reading
+                            window.open(item.link, '_blank', 'noopener,noreferrer');
+                            // Also extract content in background
+                            fetchArticleContent(item);
+                          }}
+                          title="Open article + auto-extract content"
                         >
                           Visit Page
                         </button>
@@ -1368,8 +1378,13 @@ export default function Home() {
                         </button>
                         <button
                           className="btn-link"
-                          onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                          title="Open article in new tab"
+                          onClick={() => {
+                            // Open article in new tab for reading
+                            window.open(item.link, '_blank', 'noopener,noreferrer');
+                            // Also extract content in background
+                            fetchArticleContent(item);
+                          }}
+                          title="Open article + auto-extract content"
                         >
                           Visit Page
                         </button>
