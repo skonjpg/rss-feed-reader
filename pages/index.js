@@ -54,6 +54,21 @@ export default function Home() {
     loadAll();
   }, []);
 
+  // Listen for article content from bookmarklet
+  useEffect(() => {
+    const handleMessage = (event) => {
+      // Accept messages from any origin for bookmarklet
+      if (event.data && event.data.type === 'ARTICLE_CONTENT') {
+        console.log('[Bookmarklet] Received article content:', event.data.content.substring(0, 100) + '...');
+        setNotes(event.data.content);
+        showStatus('✅ Article content pasted from bookmarklet!', 3000);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   const showStatus = (message, duration = 3000) => {
     setStatusMessage(message);
     setTimeout(() => setStatusMessage(''), duration);
