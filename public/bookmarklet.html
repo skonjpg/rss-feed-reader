@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RSS Reader - Article Scraper Bookmarklet</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    }
+    h1 {
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 30px;
+    }
+    .bookmarklet {
+      background: #6366f1;
+      color: white;
+      padding: 16px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 20px 0;
+      cursor: move;
+    }
+    .bookmarklet:hover {
+      background: #4f46e5;
+    }
+    .instructions {
+      background: #f1f5f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .instructions ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', monospace;
+      font-size: 14px;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📰 Article Scraper Bookmarklet</h1>
+    <p class="subtitle">Extract article content from any page you're viewing</p>
+
+    <div class="instructions">
+      <h3>🚀 How to Install:</h3>
+      <ol>
+        <li><strong>Drag this button</strong> to your bookmarks bar:</li>
+      </ol>
+      <a href="javascript:(function(){var t=document.querySelector('h1')||document.querySelector('title'),a=document.querySelector('article')||document.querySelector('main')||document.body,n='';if(a){var e=a.querySelectorAll('p');e.length>0?n=Array.from(e).map(t=>t.textContent.trim()).filter(t=>t.length>50).join('\n\n'):n=a.textContent.trim()}var o='--- '+t.textContent.trim()+' ---\nSource: '+window.location.hostname+'\nURL: '+window.location.href+'\n\n'+n+'\n---\n',l=prompt('Article content extracted! Copy this and paste into Research Notes:',o);l&&navigator.clipboard.writeText(o).then(()=>alert('✅ Copied to clipboard! Paste into Research Notes.')).catch(()=>alert('Copy the text manually from the prompt.'))})();" class="bookmarklet">
+        📄 Extract Article
+      </a>
+      <ol start="2">
+        <li>Or right-click the button → <strong>Bookmark This Link</strong></li>
+      </ol>
+
+      <h3>📖 How to Use:</h3>
+      <ol>
+        <li><strong>Visit any article</strong> (Bloomberg, Reuters, etc.) in your browser</li>
+        <li><strong>Login if needed</strong> to bypass paywalls</li>
+        <li><strong>Click the bookmarklet</strong> in your bookmarks bar</li>
+        <li>The content is <strong>automatically copied to clipboard</strong></li>
+        <li><strong>Paste into Research Notes</strong> in your RSS Reader app</li>
+      </ol>
+    </div>
+
+    <div class="warning">
+      <strong>💡 Pro Tip:</strong> This works on ANY website, not just news articles! Use it to extract content from blogs, documentation, Medium posts, etc.
+    </div>
+
+    <h3>🔧 What It Does:</h3>
+    <ul>
+      <li>Extracts the article title from <code>&lt;h1&gt;</code> or <code>&lt;title&gt;</code></li>
+      <li>Finds content in <code>&lt;article&gt;</code>, <code>&lt;main&gt;</code>, or all <code>&lt;p&gt;</code> tags</li>
+      <li>Filters out short paragraphs (ads, navigation)</li>
+      <li>Formats with title, source, URL, and full content</li>
+      <li>Copies to clipboard automatically</li>
+    </ul>
+
+    <h3>✅ Works On:</h3>
+    <ul>
+      <li>Bloomberg (when logged in)</li>
+      <li>Reuters (when logged in)</li>
+      <li>Wall Street Journal</li>
+      <li>New York Times</li>
+      <li>Medium posts</li>
+      <li>Tech blogs</li>
+      <li>Any news site!</li>
+    </ul>
+  </div>
+</body>
+</html>
