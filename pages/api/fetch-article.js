@@ -20,13 +20,17 @@ export default async function handler(req, res) {
     // Try ScrapeDo first if API key is configured
     if (process.env.SCRAPE_DO_API_KEY) {
       try {
-        console.log('[Fetch Article] Using ScrapeDo proxy service with super mode...');
+        // Use super mode only for Reuters/Bloomberg (high anti-bot protection)
+        // Use regular mode for other sites to save credits
+        const needsSuperMode = url.includes('reuters.com') || url.includes('bloomberg.com');
+        const mode = needsSuperMode ? 'super=true' : 'render=true';
 
-        // Use super=true for advanced anti-bot protection (better for Reuters/Bloomberg)
-        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&super=true`;
+        console.log(`[Fetch Article] Using ScrapeDo ${needsSuperMode ? 'SUPER' : 'regular'} mode for ${url}`);
+
+        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}&${mode}`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for super mode
+        const timeoutId = setTimeout(() => controller.abort(), needsSuperMode ? 60000 : 30000);
 
         const response = await fetch(scrapeDoUrl, {
           signal: controller.signal
@@ -37,10 +41,10 @@ export default async function handler(req, res) {
         if (response.ok) {
           html = await response.text();
           usedScrapeDo = true;
-          console.log(`[Fetch Article] Successfully fetched via ScrapeDo (${html.length} bytes)`);
+          console.log(`[Fetch Article] ✅ ScrapeDo ${needsSuperMode ? 'SUPER' : 'regular'} mode success (${html.length} bytes)`);
         } else {
           const errorText = await response.text();
-          console.log(`[Fetch Article] ScrapeDo failed with status ${response.status}: ${errorText.substring(0, 200)}`);
+          console.log(`[Fetch Article] ❌ ScrapeDo failed (${response.status}): ${errorText.substring(0, 200)}`);
         }
       } catch (scrapeDoError) {
         console.log('[Fetch Article] ScrapeDo error, falling back to direct fetch:', scrapeDoError.message);
