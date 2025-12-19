@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test PostMessage</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .test-section {
+      background: #f1f5f9;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    button {
+      background: #6366f1;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #4f46e5;
+    }
+    #log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+      margin-top: 20px;
+      min-height: 200px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>PostMessage Test</h1>
+
+  <div class="test-section">
+    <h3>Test 1: Verify Listener is Running</h3>
+    <button onclick="testListener()">Test Listener</button>
+    <p id="listenerStatus"></p>
+  </div>
+
+  <div class="test-section">
+    <h3>Test 2: Open New Window & Send Message</h3>
+    <button onclick="testOpenAndSend()">Open Test Window</button>
+    <p>This will open a new window and that window will try to send a message back.</p>
+  </div>
+
+  <div class="test-section">
+    <h3>Test 3: Check if window.opener exists</h3>
+    <button onclick="checkOpener()">Check window.opener</button>
+    <p id="openerStatus"></p>
+  </div>
+
+  <div id="log">--- Console Log ---</div>
+
+  <script>
+    const log = document.getElementById('log');
+
+    function addLog(message) {
+      log.textContent += '\n[' + new Date().toLocaleTimeString() + '] ' + message;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Set up postMessage listener
+    window.addEventListener('message', (event) => {
+      addLog('✅ Message received!');
+      addLog('   Type: ' + (event.data.type || 'N/A'));
+      addLog('   Content length: ' + (event.data.content ? event.data.content.length : 0) + ' chars');
+      addLog('   Origin: ' + event.origin);
+
+      if (event.data.type === 'ARTICLE_CONTENT') {
+        addLog('✨ ARTICLE CONTENT RECEIVED!');
+        addLog('   Preview: ' + event.data.content.substring(0, 100) + '...');
+      }
+    });
+
+    addLog('PostMessage listener initialized');
+
+    function testListener() {
+      addLog('Testing listener by sending message to self...');
+      window.postMessage({ type: 'TEST', content: 'Hello from test!' }, '*');
+      document.getElementById('listenerStatus').textContent = '✅ Message sent to self';
+    }
+
+    function testOpenAndSend() {
+      addLog('Opening new window...');
+      const newWin = window.open('about:blank', '_blank');
+
+      setTimeout(() => {
+        addLog('New window opened, writing test script...');
+        newWin.document.write(`
+          <html>
+            <body style="font-family: sans-serif; padding: 50px">
+              <h2>Test Window</h2>
+              <p>This window will send a message back to the parent.</p>
+              <button onclick="sendMessage()">Send Message to Parent</button>
+              <div id="status"></div>
+              <script>
+                function sendMessage() {
+                  if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({
+                      type: 'ARTICLE_CONTENT',
+                      content: 'Test article content from child window!'
+                    }, '*');
+                    document.getElementById('status').innerHTML = '<p style="color: green">✅ Message sent to parent!</p>';
+                  } else {
+                    document.getElementById('status').innerHTML = '<p style="color: red">❌ No window.opener found!</p>';
+                  }
+                }
+
+                // Auto-send after 1 second
+                setTimeout(sendMessage, 1000);
+              <\/script>
+            </body>
+          </html>
+        `);
+        newWin.document.close();
+      }, 100);
+    }
+
+    function checkOpener() {
+      if (window.opener) {
+        document.getElementById('openerStatus').textContent = '✅ window.opener exists (this window was opened from another window)';
+        addLog('window.opener: EXISTS');
+      } else {
+        document.getElementById('openerStatus').textContent = '❌ window.opener is null (this is the main window)';
+        addLog('window.opener: NULL (this is expected for the main window)');
+      }
+    }
+  </script>
+</body>
+</html>
