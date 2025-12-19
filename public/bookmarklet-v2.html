@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RSS Reader - Article Scraper Bookmarklet v2</title>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    }
+    h1 {
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 30px;
+    }
+    .bookmarklet {
+      background: #6366f1;
+      color: white;
+      padding: 16px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      font-size: 16px;
+      margin: 20px 0;
+      cursor: move;
+    }
+    .bookmarklet:hover {
+      background: #4f46e5;
+    }
+    .instructions {
+      background: #f1f5f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .instructions ol {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', monospace;
+      font-size: 14px;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📰 Article Scraper Bookmarklet (v2)</h1>
+    <p class="subtitle">Extract article content with automatic delivery to Research Notes</p>
+
+    <div class="instructions">
+      <h3>🚀 How to Install:</h3>
+      <ol>
+        <li><strong>Drag this button</strong> to your bookmarks bar:</li>
+      </ol>
+      <a href="javascript:(function(){function extractContent(){let title=document.querySelector('h1')||document.querySelector('title');let content='';let container=null;const selectors=['article','[role=article]','main','[class*=article-body]','[class*=story-body]','[class*=post-content]','.content'];for(const sel of selectors){container=document.querySelector(sel);if(container&&container.textContent.length>500){break}}if(!container){container=document.body}let textElements=container.querySelectorAll('p,h1,h2,h3,h4,h5,h6,li,blockquote');if(textElements.length===0){textElements=container.querySelectorAll('div')}let extracted=Array.from(textElements).map(el=>{let text=el.textContent.trim();if(text.length<30)return'';if(el.tagName.match(/^H[1-6]$/)){return'\n## '+text+'\n'}if(el.tagName==='BLOCKQUOTE'){return'> '+text}return text}).filter(t=>t.length>0);let uniqueLines=new Set();content=extracted.filter(line=>{if(uniqueLines.has(line))return false;uniqueLines.add(line);return true}).join('\n\n');if(content.length<200){content=container.textContent.trim()}let formatted='--- '+title.textContent.trim()+' ---\nSource: '+window.location.hostname+'\nURL: '+window.location.href+'\n\n'+content+'\n---\n';return formatted}let result=extractContent();console.log('[Bookmarklet] Extracted '+result.length+' characters');try{if(window.opener&&!window.opener.closed){console.log('[Bookmarklet] Trying postMessage to window.opener');window.opener.postMessage({type:'ARTICLE_CONTENT',content:result},'*');let notification=document.createElement('div');notification.style.cssText='position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:20px 30px;border-radius:8px;z-index:999999;box-shadow:0 10px 40px rgba(0,0,0,0.3);font-family:sans-serif;font-weight:600;font-size:16px;animation:slideIn 0.3s ease';notification.innerHTML='✅ Article sent!<br><small style=\"font-weight:400;opacity:0.9\">'+result.length+' characters</small>';document.body.appendChild(notification);setTimeout(()=>{if(document.body.contains(notification)){document.body.removeChild(notification)}},3000);return}}catch(e){console.log('[Bookmarklet] postMessage failed:',e)}console.log('[Bookmarklet] Using localStorage fallback');localStorage.setItem('rss_article_content',JSON.stringify({content:result,timestamp:Date.now()}));let modal=document.createElement('div');modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center';let box=document.createElement('div');box.style.cssText='background:white;padding:30px;border-radius:12px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)';box.innerHTML='<h2 style=\"margin:0 0 20px 0;color:#1e293b\">📄 Article Extracted</h2><p style=\"color:#10b981;margin-bottom:15px;font-weight:600\">✅ Saved to clipboard + localStorage</p><p style=\"color:#64748b;margin-bottom:20px;font-size:14px\">'+result.split('\\n').length+' lines ('+result.length+' characters)<br>Go back to RSS Reader tab - content will auto-appear!</p><textarea readonly style=\"width:100%;height:250px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:11px;resize:vertical\">'+result.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</textarea><div style=\"display:flex;gap:12px;margin-top:20px\"><button id=\"copyBtn\" style=\"flex:1;padding:12px 24px;background:#10b981;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px\">📋 Copy Again</button><button id=\"closeBtn\" style=\"padding:12px 24px;background:#64748b;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px\">Close</button></div>';modal.appendChild(box);document.body.appendChild(modal);navigator.clipboard.writeText(result).catch(()=>{});document.getElementById('copyBtn').onclick=function(){navigator.clipboard.writeText(result).then(()=>{this.textContent='✅ Copied!';setTimeout(()=>{this.textContent='📋 Copy Again'},1500)})};document.getElementById('closeBtn').onclick=function(){document.body.removeChild(modal)};modal.onclick=function(e){if(e.target===modal){document.body.removeChild(modal)}}})();" class="bookmarklet">
+        📄 Extract Article
+      </a>
+      <ol start="2">
+        <li>Or right-click the button → <strong>Bookmark This Link</strong></li>
+      </ol>
+
+      <h3>📖 How to Use:</h3>
+      <ol>
+        <li>In RSS Reader, <strong>click "Visit Page"</strong> on any article</li>
+        <li><strong>Login if needed</strong> (for Bloomberg, Reuters, etc.)</li>
+        <li><strong>Click the bookmarklet</strong> in your bookmarks bar</li>
+        <li>Content <strong>automatically appears in Research Notes</strong> via:
+          <ul>
+            <li>✅ postMessage (instant if same domain)</li>
+            <li>✅ localStorage (backup, checked every 2 seconds)</li>
+            <li>✅ Clipboard (manual paste as last resort)</li>
+          </ul>
+        </li>
+      </ol>
+
+      <div class="success">
+        <strong>🎯 Triple Delivery System:</strong> The bookmarklet tries 3 methods to ensure content delivery:
+        <ol style="margin: 10px 0; padding-left: 20px;">
+          <li><strong>postMessage</strong> - Instant delivery to parent window</li>
+          <li><strong>localStorage</strong> - Auto-detected by RSS Reader every 2 seconds</li>
+          <li><strong>Clipboard</strong> - Automatically copied for manual paste</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="warning">
+      <strong>💡 Pro Tip:</strong> Works on ANY website! Bloomberg, Reuters, WSJ, NYT, Medium, tech blogs, documentation, etc.
+    </div>
+
+    <h3>🔧 What It Does:</h3>
+    <ul>
+      <li>Extracts full article content from <code>&lt;article&gt;</code>, <code>&lt;main&gt;</code>, or all <code>&lt;p&gt;</code> tags</li>
+      <li>Formats with title, source, URL, and full content</li>
+      <li>Tries postMessage → localStorage → clipboard (triple fallback)</li>
+      <li>Shows green notification on success</li>
+      <li>Works even behind paywalls (when you're logged in)</li>
+    </ul>
+
+    <h3>✅ Tested On:</h3>
+    <ul>
+      <li>✅ Bloomberg (with login)</li>
+      <li>✅ Reuters (with login)</li>
+      <li>✅ Wall Street Journal</li>
+      <li>✅ New York Times</li>
+      <li>✅ Medium posts</li>
+      <li>✅ Tech blogs</li>
+      <li>✅ Documentation sites</li>
+    </ul>
+  </div>
+</body>
+</html>

@@ -54,19 +54,46 @@ export default function Home() {
     loadAll();
   }, []);
 
-  // Listen for article content from bookmarklet
+  // Listen for article content from bookmarklet via postMessage AND localStorage
   useEffect(() => {
+    // Method 1: postMessage (instant)
     const handleMessage = (event) => {
-      // Accept messages from any origin for bookmarklet
       if (event.data && event.data.type === 'ARTICLE_CONTENT') {
-        console.log('[Bookmarklet] Received article content:', event.data.content.substring(0, 100) + '...');
+        console.log('[Bookmarklet] Received via postMessage:', event.data.content.substring(0, 100) + '...');
         setNotes(event.data.content);
-        showStatus('✅ Article content pasted from bookmarklet!', 3000);
+        showStatus('✅ Article pasted via postMessage!', 3000);
+      }
+    };
+
+    // Method 2: localStorage polling (backup for cross-origin)
+    let lastCheckedTimestamp = Date.now();
+    const checkLocalStorage = () => {
+      try {
+        const stored = localStorage.getItem('rss_article_content');
+        if (stored) {
+          const data = JSON.parse(stored);
+          // Only process if it's newer than our last check
+          if (data.timestamp > lastCheckedTimestamp) {
+            console.log('[Bookmarklet] Received via localStorage:', data.content.substring(0, 100) + '...');
+            setNotes(data.content);
+            showStatus('✅ Article pasted via localStorage!', 3000);
+            lastCheckedTimestamp = data.timestamp;
+            // Clear after processing to avoid re-processing
+            localStorage.removeItem('rss_article_content');
+          }
+        }
+      } catch (e) {
+        // Ignore localStorage errors
       }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    const intervalId = setInterval(checkLocalStorage, 2000); // Check every 2 seconds
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const showStatus = (message, duration = 3000) => {
