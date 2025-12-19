@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       try {
         console.log('[Fetch Article] Using ScrapeDo proxy service...');
 
-        const scrapeDoUrl = `https://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}`;
+        const scrapeDoUrl = `http://api.scrape.do/?token=${process.env.SCRAPE_DO_API_KEY}&url=${encodeURIComponent(url)}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for ScrapeDo
