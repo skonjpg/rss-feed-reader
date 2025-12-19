@@ -84,18 +84,66 @@ export default async function handler(req, res) {
 
     const root = parse(html);
 
-    // Try to extract the main content using common article selectors
+    // Try to extract the main content using comprehensive selectors (bookmarklet-style)
     let content = '';
+    let container = null;
 
-    // Try article tag first
-    const article = root.querySelector('article');
-    if (article) {
-      const paragraphs = article.querySelectorAll('p');
-      if (paragraphs.length > 0) {
-        content = paragraphs.map(p => p.textContent.trim()).filter(t => t.length > 0).join('\n\n');
-      } else {
-        content = article.textContent;
+    // Try multiple container selectors in order of preference
+    const containerSelectors = [
+      'article',
+      '[role="article"]',
+      'main',
+      '[class*="article-body"]',
+      '[class*="story-body"]',
+      '[class*="post-content"]',
+      '.content'
+    ];
+
+    for (const selector of containerSelectors) {
+      container = root.querySelector(selector);
+      if (container && container.textContent.length > 500) {
+        console.log(`[Fetch Article] Using container: ${selector}`);
+        break;
       }
+    }
+
+    if (!container) {
+      container = root;
+    }
+
+    // Extract all text elements (paragraphs, headings, lists, quotes)
+    const textElements = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+
+    if (textElements.length > 0) {
+      const extracted = Array.from(textElements).map(el => {
+        const text = el.textContent.trim();
+        if (text.length < 30) return '';
+
+        // Format headings
+        if (el.tagName.match(/^H[1-6]$/)) {
+          return `\n## ${text}\n`;
+        }
+
+        // Format blockquotes
+        if (el.tagName === 'BLOCKQUOTE') {
+          return `> ${text}`;
+        }
+
+        return text;
+      }).filter(t => t.length > 0);
+
+      // Deduplicate repeated content (navigation, ads)
+      const uniqueLines = new Set();
+      content = extracted.filter(line => {
+        if (uniqueLines.has(line)) return false;
+        uniqueLines.add(line);
+        return true;
+      }).join('\n\n');
+    }
+
+    // If we got good content, skip the old selectors
+    if (content && content.length > 500) {
+      console.log(`[Fetch Article] Extracted ${content.length} characters using comprehensive extraction`);
     }
 
     // Try Reuters-specific selectors
