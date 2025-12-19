@@ -112,7 +112,13 @@ export default async function handler(req, res) {
     }
 
     // Extract all text elements (paragraphs, headings, lists, quotes)
-    const textElements = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+    let textElements = container.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote');
+
+    // Fallback to divs if no text elements found (like bookmarklet)
+    if (textElements.length === 0) {
+      console.log('[Fetch Article] No text elements found, falling back to divs');
+      textElements = container.querySelectorAll('div');
+    }
 
     if (textElements.length > 0) {
       const extracted = Array.from(textElements).map(el => {
@@ -139,11 +145,13 @@ export default async function handler(req, res) {
         uniqueLines.add(line);
         return true;
       }).join('\n\n');
+
+      console.log(`[Fetch Article] Extracted ${extracted.length} elements, ${content.length} characters using comprehensive extraction`);
     }
 
     // If we got good content, skip the old selectors
     if (content && content.length > 500) {
-      console.log(`[Fetch Article] Extracted ${content.length} characters using comprehensive extraction`);
+      console.log(`[Fetch Article] ✅ Good content extracted, skipping fallback selectors`);
     }
 
     // Try Reuters-specific selectors
