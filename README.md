@@ -119,6 +119,7 @@ The following environment variables must be set in your Vercel project:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for server-side operations)
 - `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude AI
+- `SCRAPE_DO_API_KEY` - Your ScrapeDo API key for bypassing anti-bot protection (sign up at https://www.scrape.do/)
 - `N8N_WEBHOOK_URL` - Your n8n webhook URL (optional, for article summarization)
 - `CRON_SECRET` - A secret string to secure the automated cron endpoint (e.g., a random UUID)
 
