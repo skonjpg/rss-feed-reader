@@ -61,24 +61,40 @@ export default function Home() {
       if (event.data && event.data.type === 'ARTICLE_CONTENT') {
         console.log('[Bookmarklet] Received via postMessage:', event.data.content.substring(0, 100) + '...');
         setNotes(event.data.content);
-        showStatus('✅ Article pasted via postMessage!', 3000);
+        showStatus('✅ Article auto-pasted!', 3000);
       }
     };
 
-    // Method 2: localStorage polling (backup for cross-origin)
+    // Method 2: Storage event (INSTANT cross-tab detection)
     let lastCheckedTimestamp = Date.now();
+    const handleStorageEvent = (e) => {
+      if (e.key === 'rss_article_content' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data.timestamp > lastCheckedTimestamp) {
+            console.log('[Bookmarklet] Received via storage event (INSTANT):', data.content.substring(0, 100) + '...');
+            setNotes(data.content);
+            showStatus('✅ Article auto-pasted!', 3000);
+            lastCheckedTimestamp = data.timestamp;
+            localStorage.removeItem('rss_article_content');
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    };
+
+    // Method 3: localStorage polling (backup if storage event doesn't fire)
     const checkLocalStorage = () => {
       try {
         const stored = localStorage.getItem('rss_article_content');
         if (stored) {
           const data = JSON.parse(stored);
-          // Only process if it's newer than our last check
           if (data.timestamp > lastCheckedTimestamp) {
-            console.log('[Bookmarklet] Received via localStorage:', data.content.substring(0, 100) + '...');
+            console.log('[Bookmarklet] Received via localStorage polling:', data.content.substring(0, 100) + '...');
             setNotes(data.content);
-            showStatus('✅ Article pasted via localStorage!', 3000);
+            showStatus('✅ Article auto-pasted!', 3000);
             lastCheckedTimestamp = data.timestamp;
-            // Clear after processing to avoid re-processing
             localStorage.removeItem('rss_article_content');
           }
         }
@@ -88,10 +104,12 @@ export default function Home() {
     };
 
     window.addEventListener('message', handleMessage);
-    const intervalId = setInterval(checkLocalStorage, 2000); // Check every 2 seconds
+    window.addEventListener('storage', handleStorageEvent); // INSTANT detection
+    const intervalId = setInterval(checkLocalStorage, 500); // Faster polling (500ms)
 
     return () => {
       window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorageEvent);
       clearInterval(intervalId);
     };
   }, []);
