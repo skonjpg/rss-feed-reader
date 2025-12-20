@@ -10,6 +10,7 @@ export default function Home() {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
@@ -643,6 +644,35 @@ export default function Home() {
     }
   };
 
+  const summarizeAllArticles = async () => {
+    if (summarizing) return;
+
+    setSummarizing(true);
+    setAiSummary('');
+    showStatus('🤖 Sending articles to AI for summarization...', 10000);
+
+    try {
+      const response = await fetch('/api/articles/summarize-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'Failed to summarize articles');
+      }
+
+      setAiSummary(data.summary);
+      showStatus(`✅ ${data.articleCount} articles summarized successfully!`, 5000);
+    } catch (error) {
+      console.error('Error summarizing articles:', error);
+      showStatus('❌ Error: ' + error.message, 5000);
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   const addManualArticle = async () => {
     if (!manualArticleUrl.trim()) {
       showStatus('⚠️ Please enter a URL');
@@ -1258,6 +1288,23 @@ export default function Home() {
                 </div>
               ) : (
                 <>
+                  {/* Summarize All Button */}
+                  <div className="summarize-section">
+                    <button
+                      onClick={summarizeAllArticles}
+                      disabled={summarizing}
+                      className="btn-summarize"
+                    >
+                      {summarizing ? '🤖 Summarizing...' : '🤖 Summarize with AI'}
+                    </button>
+                    {aiSummary && (
+                      <div className="ai-summary-box">
+                        <h3>AI Summary</h3>
+                        <div className="summary-content">{aiSummary}</div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Unpublished approved articles */}
                   {approvedArticles.filter(item => !item.published).map((item) => (
                     <div key={item.dbId || item.id} className="feed-item approved">
@@ -2063,6 +2110,60 @@ export default function Home() {
 
         .published-article {
           opacity: 0.6;
+        }
+
+        .summarize-section {
+          margin: 20px;
+          padding: 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-summarize {
+          width: 100%;
+          padding: 15px 25px;
+          background: white;
+          color: #667eea;
+          border: none;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-summarize:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-summarize:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .ai-summary-box {
+          margin-top: 20px;
+          padding: 20px;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .ai-summary-box h3 {
+          margin: 0 0 15px 0;
+          color: #667eea;
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .summary-content {
+          color: #334155;
+          line-height: 1.6;
+          white-space: pre-wrap;
+          font-size: 14px;
         }
 
         .notes-header {
