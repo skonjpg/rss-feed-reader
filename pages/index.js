@@ -1268,10 +1268,11 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                           <button
-                            className="btn-visit"
+                            className="btn-link"
                             onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                            title="Open article in new tab - then use bookmarklet to extract"
                           >
-                            View Article
+                            Visit Page
                           </button>
                           <button
                             className="btn-approve approved"
@@ -1310,10 +1311,11 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                           <button
-                            className="btn-visit"
+                            className="btn-link"
                             onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                            title="Open article in new tab - then use bookmarklet to extract"
                           >
-                            View Article
+                            Visit Page
                           </button>
                           <button
                             className="btn-approve approved"
