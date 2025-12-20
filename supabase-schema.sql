@@ -92,7 +92,8 @@ ADD COLUMN IF NOT EXISTS auto_flagged BOOLEAN DEFAULT false;
 
 -- Add confidence score to approved_articles
 ALTER TABLE approved_articles
-ADD COLUMN IF NOT EXISTS confidence_score FLOAT;
+ADD COLUMN IF NOT EXISTS confidence_score FLOAT,
+ADD COLUMN IF NOT EXISTS research_notes TEXT;
 
 -- =====================================================
 -- 5. JUNK ARTICLES TABLE (Negative Training Examples)
@@ -119,4 +120,35 @@ ALTER TABLE junk_articles ENABLE ROW LEVEL SECURITY;
 
 -- Create a policy that allows all operations
 CREATE POLICY "Allow all operations on junk_articles" ON junk_articles
+  FOR ALL USING (true);
+
+-- =====================================================
+-- 6. NEURAL NETWORK MODEL TABLE (Model Persistence)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS neural_network_models (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  model_version TEXT NOT NULL DEFAULT 'v1',
+  vocabulary JSONB NOT NULL, -- Array of vocabulary words
+  weights_input_hidden JSONB NOT NULL, -- 2D array of weights
+  weights_hidden_output JSONB NOT NULL, -- 2D array of weights
+  bias_hidden JSONB NOT NULL, -- Array of bias values
+  bias_output JSONB NOT NULL, -- Array of bias values
+  input_size INTEGER NOT NULL,
+  hidden_size INTEGER NOT NULL,
+  output_size INTEGER NOT NULL,
+  learning_rate FLOAT NOT NULL DEFAULT 0.1,
+  training_count INTEGER DEFAULT 0, -- Number of training iterations
+  last_trained_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT true -- Only one active model at a time
+);
+
+-- Create indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_nn_models_active ON neural_network_models(is_active, last_trained_at DESC);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE neural_network_models ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that allows all operations
+CREATE POLICY "Allow all operations on neural_network_models" ON neural_network_models
   FOR ALL USING (true);
