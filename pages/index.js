@@ -6,7 +6,7 @@ export default function Home() {
   const [approvedArticles, setApprovedArticles] = useState([]);
   const [flaggedArticles, setFlaggedArticles] = useState([]);
   const [junkArticles, setJunkArticles] = useState([]);
-  const [notes, setNotes] = useState('');
+  const [noteBoxes, setNoteBoxes] = useState([{ id: 1, content: '' }]);
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
@@ -737,25 +737,38 @@ export default function Home() {
   };
 
   const summarizeWithAI = async () => {
-    if (!notes.trim()) {
+    // Combine all non-empty note boxes
+    const allNotes = noteBoxes
+      .map(box => box.content.trim())
+      .filter(content => content.length > 0)
+      .join('\n\n---\n\n');
+
+    if (!allNotes) {
       showStatus('⚠️ Please enter some notes to summarize');
       return;
     }
 
     setSummarizing(true);
     try {
-      showStatus('🤖 Summarizing with AI...');
+      showStatus('🤖 Sending to n8n for AI summarization...');
 
-      const response = await fetch('/api/summarize', {
+      // Get n8n webhook URL from environment or use default
+      const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || '/api/articles/summarize-notes';
+
+      const response = await fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notes })
+        body: JSON.stringify({
+          notes: allNotes,
+          noteCount: noteBoxes.filter(box => box.content.trim().length > 0).length,
+          timestamp: new Date().toISOString()
+        })
       });
 
       if (response.ok) {
         const result = await response.json();
         const newSummary = {
-          text: result.summary || 'No summary returned',
+          text: result.summary || result.message || 'Summary generated',
           timestamp: new Date(),
           id: Date.now()
         };
@@ -763,7 +776,7 @@ export default function Home() {
         showStatus('✅ Summary generated!');
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate summary');
+        throw new Error(errorData.error || errorData.message || 'Failed to generate summary');
       }
     } catch (error) {
       showStatus('❌ Error: ' + error.message);
@@ -779,13 +792,47 @@ export default function Home() {
     }
   };
 
+  const addNoteBox = () => {
+    const newId = Math.max(...noteBoxes.map(box => box.id), 0) + 1;
+    setNoteBoxes([...noteBoxes, { id: newId, content: '' }]);
+    showStatus('✅ Added new note box');
+  };
+
+  const removeNoteBox = (id) => {
+    if (noteBoxes.length === 1) {
+      showStatus('⚠️ Must have at least one note box');
+      return;
+    }
+    setNoteBoxes(noteBoxes.filter(box => box.id !== id));
+    showStatus('🗑️ Note box removed');
+  };
+
+  const updateNoteBox = (id, content) => {
+    setNoteBoxes(noteBoxes.map(box =>
+      box.id === id ? { ...box, content } : box
+    ));
+  };
+
+  const pasteIntoNoteBox = async (id) => {
+    try {
+      const content = await navigator.clipboard.readText();
+      if (content) {
+        updateNoteBox(id, content);
+        showStatus('✅ Pasted from clipboard!');
+      }
+    } catch (err) {
+      showStatus('❌ Failed to paste from clipboard');
+    }
+  };
+
   const clearNotes = () => {
-    if (!notes.trim() && summaries.length === 0) {
+    const hasContent = noteBoxes.some(box => box.content.trim().length > 0);
+    if (!hasContent && summaries.length === 0) {
       showStatus('Notes are already empty');
       return;
     }
     if (confirm('Clear all notes and summaries?')) {
-      setNotes('');
+      setNoteBoxes([{ id: 1, content: '' }]);
       setSummaries([]);
       showStatus('🗑️ Notes cleared');
     }
@@ -1401,33 +1448,44 @@ export default function Home() {
           </div>
           <div className="notes-content">
             <div className="notes-editor">
-              <textarea
-                className="notes-textarea"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Write your research notes here...&#10;&#10;You can add thoughts, observations, and key points from the articles you're reviewing."
-              />
+              <div className="note-boxes-container">
+                {noteBoxes.map((box, index) => (
+                  <div key={box.id} className="note-box">
+                    <div className="note-box-header">
+                      <span className="note-box-label">Article {index + 1}</span>
+                      <button
+                        onClick={() => removeNoteBox(box.id)}
+                        className="btn-remove-box"
+                        disabled={noteBoxes.length === 1}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <textarea
+                      className="notes-textarea"
+                      value={box.content}
+                      onChange={(e) => updateNoteBox(box.id, e.target.value)}
+                      placeholder="Paste article content here..."
+                    />
+                    <button
+                      onClick={() => pasteIntoNoteBox(box.id)}
+                      className="btn-paste-box"
+                    >
+                      📋 Paste Article
+                    </button>
+                  </div>
+                ))}
+              </div>
               <div className="notes-actions">
                 <button
-                  onClick={async () => {
-                    try {
-                      const content = await navigator.clipboard.readText();
-                      if (content) {
-                        setNotes(prevNotes => prevNotes + (prevNotes ? '\n\n' : '') + content);
-                        showStatus('✅ Pasted from clipboard!');
-                      }
-                    } catch (err) {
-                      showStatus('❌ Could not read clipboard. Use Ctrl+V to paste manually.');
-                    }
-                  }}
-                  className="btn-paste"
-                  title="Paste article content from clipboard"
+                  onClick={addNoteBox}
+                  className="btn-add-box"
                 >
-                  📋 Paste Article
+                  ➕ Add Article Box
                 </button>
                 <button
                   onClick={summarizeWithAI}
-                  disabled={summarizing || !notes.trim()}
+                  disabled={summarizing || noteBoxes.every(box => !box.content.trim())}
                   className="btn-ai"
                 >
                   {summarizing ? '🤖 Summarizing...' : '🤖 Summarize with AI'}
@@ -1436,7 +1494,7 @@ export default function Home() {
                   onClick={clearNotes}
                   className="btn-clear"
                 >
-                  Clear Notes
+                  Clear All
                 </button>
               </div>
             </div>
@@ -2115,17 +2173,99 @@ export default function Home() {
           gap: 12px;
         }
 
-        .notes-textarea {
-          width: 100%;
-          min-height: 500px;
-          padding: 16px;
+        .note-boxes-container {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .note-box {
           border: 2px solid #e1e8ed;
           border-radius: 12px;
+          padding: 16px;
+          background: white;
+        }
+
+        .note-box-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        }
+
+        .note-box-label {
+          font-weight: 600;
+          color: #002855;
+          font-size: 14px;
+        }
+
+        .btn-remove-box {
+          background: #ef4444;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 4px 12px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s;
+        }
+
+        .btn-remove-box:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .btn-remove-box:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .btn-paste-box {
+          margin-top: 8px;
+          padding: 8px 16px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .btn-paste-box:hover {
+          background: #2563eb;
+          transform: translateY(-1px);
+        }
+
+        .btn-add-box {
+          padding: 10px 20px;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+
+        .btn-add-box:hover {
+          background: #059669;
+          transform: translateY(-1px);
+        }
+
+        .notes-textarea {
+          width: 100%;
+          min-height: 200px;
+          padding: 16px;
+          border: 2px solid #e1e8ed;
+          border-radius: 8px;
           font-size: 14px;
           font-family: 'Inter', sans-serif;
           line-height: 1.7;
           color: #0f172a;
-          background: white;
+          background: #f8fafc;
           resize: vertical;
           transition: all 0.2s;
         }
