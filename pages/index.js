@@ -993,8 +993,8 @@ export default function Home() {
               <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
             <div className="refresh-controls">
-              <button onClick={() => loadFeeds(null, true, true)} className="btn-primary">
-                Refresh Feeds
+              <button onClick={() => loadFeeds(null, true, false)} disabled={loading} className="btn-primary">
+                {loading ? 'Loading...' : 'Refresh Feeds'}
               </button>
             </div>
           </div>
