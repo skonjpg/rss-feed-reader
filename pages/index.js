@@ -993,8 +993,8 @@ export default function Home() {
               <span className="ml-stats-text">{scoredInAllArticles} Scored</span>
             </div>
             <div className="refresh-controls">
-              <button onClick={() => loadFeeds(null, true, true)} className="btn-primary">
-                Refresh Feeds
+              <button onClick={() => loadFeeds(null, true, false)} disabled={loading} className="btn-primary">
+                {loading ? 'Loading...' : 'Refresh Feeds'}
               </button>
             </div>
           </div>
@@ -1268,10 +1268,11 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                           <button
-                            className="btn-visit"
+                            className="btn-link"
                             onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                            title="Open article in new tab - then use bookmarklet to extract"
                           >
-                            View Article
+                            Visit Page
                           </button>
                           <button
                             className="btn-approve approved"
@@ -1310,10 +1311,11 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                           <button
-                            className="btn-visit"
+                            className="btn-link"
                             onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
+                            title="Open article in new tab - then use bookmarklet to extract"
                           >
-                            View Article
+                            Visit Page
                           </button>
                           <button
                             className="btn-approve approved"
