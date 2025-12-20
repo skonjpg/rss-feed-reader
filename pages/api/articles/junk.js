@@ -1,5 +1,5 @@
 import { supabase } from '../../../lib/supabase';
-import { incrementalTraining } from '../../../lib/neural-network-scorer';
+import { invalidateModelCache } from '../../../lib/neural-network-scorer';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -56,16 +56,13 @@ export default async function handler(req, res) {
       // Don't fail the request if prediction deletion fails - article is already junked
     }
 
-    // Trigger incremental training with the new junk article
-    // This runs in the background and doesn't block the response
-    incrementalTraining([], [data], 20).catch(err => {
-      console.error('Error during incremental training:', err);
-    });
+    // Invalidate neural network cache since we have new training data
+    invalidateModelCache();
 
     return res.status(200).json({
       success: true,
       article: data,
-      message: 'Article marked as junk - neural network is learning from this'
+      message: 'Article marked as junk successfully'
     });
 
   } catch (error) {

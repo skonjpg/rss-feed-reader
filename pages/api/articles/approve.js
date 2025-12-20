@@ -1,6 +1,5 @@
 import { supabase } from '../../../lib/supabase';
-import { incrementalTraining } from '../../../lib/neural-network-scorer';
-import { extractAndFormat } from '../../../lib/content-extractor';
+import { invalidateModelCache } from '../../../lib/neural-network-scorer';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -57,37 +56,13 @@ export default async function handler(req, res) {
       // Don't fail the request if prediction deletion fails - article is already approved
     }
 
-    // Trigger incremental training with the new approved article
-    // This runs in the background and doesn't block the response
-    incrementalTraining([data], [], 20).catch(err => {
-      console.error('Error during incremental training:', err);
-    });
-
-    // Auto-extract article content and save to research_notes
-    // This runs in the background and doesn't block the response
-    extractAndFormat(article.link).then(async (researchNotes) => {
-      try {
-        const { error: updateError } = await supabase
-          .from('approved_articles')
-          .update({ research_notes: researchNotes })
-          .eq('id', data.id);
-
-        if (updateError) {
-          console.error('[Auto-Extract] Error saving research notes:', updateError);
-        } else {
-          console.log(`[Auto-Extract] ✅ Content extracted and saved for: ${data.title}`);
-        }
-      } catch (err) {
-        console.error('[Auto-Extract] Error:', err);
-      }
-    }).catch(err => {
-      console.error('[Auto-Extract] Extraction failed:', err);
-    });
+    // Invalidate neural network cache since we have new training data
+    invalidateModelCache();
 
     return res.status(200).json({
       success: true,
       article: data,
-      message: 'Article approved - extracting content in background'
+      message: 'Article approved successfully'
     });
 
   } catch (error) {
