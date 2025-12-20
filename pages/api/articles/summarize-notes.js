@@ -21,17 +21,9 @@ export default async function handler(req, res) {
     console.log('[Summarize Notes] Sending notes to n8n...');
     console.log(`[Summarize Notes] Notes length: ${notes.length} characters`);
 
-    // Get n8n webhook URL from environment variable
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-
-    if (!n8nWebhookUrl) {
-      console.error('[Summarize Notes] N8N_WEBHOOK_URL not configured');
-      return res.status(500).json({
-        success: false,
-        error: 'N8N webhook URL not configured',
-        message: 'Please set N8N_WEBHOOK_URL in environment variables'
-      });
-    }
+    // n8n webhook URL - can be overridden with N8N_WEBHOOK_URL environment variable
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL ||
+      'https://edgewater.app.n8n.cloud/webhook-test/4e0da20e-9a6a-4b3d-9d27-d4a73ab54cda';
 
     // Send notes to n8n webhook
     const n8nResponse = await fetch(n8nWebhookUrl, {
