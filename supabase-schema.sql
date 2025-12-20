@@ -92,7 +92,8 @@ ADD COLUMN IF NOT EXISTS auto_flagged BOOLEAN DEFAULT false;
 
 -- Add confidence score to approved_articles
 ALTER TABLE approved_articles
-ADD COLUMN IF NOT EXISTS confidence_score FLOAT;
+ADD COLUMN IF NOT EXISTS confidence_score FLOAT,
+ADD COLUMN IF NOT EXISTS research_notes TEXT;
 
 -- =====================================================
 -- 5. JUNK ARTICLES TABLE (Negative Training Examples)
