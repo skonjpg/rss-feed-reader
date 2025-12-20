@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { incrementalTraining } from '../../../lib/neural-network-scorer';
+import { extractAndFormat } from '../../../lib/content-extractor';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -62,10 +63,31 @@ export default async function handler(req, res) {
       console.error('Error during incremental training:', err);
     });
 
+    // Auto-extract article content and save to research_notes
+    // This runs in the background and doesn't block the response
+    extractAndFormat(article.link).then(async (researchNotes) => {
+      try {
+        const { error: updateError } = await supabase
+          .from('approved_articles')
+          .update({ research_notes: researchNotes })
+          .eq('id', data.id);
+
+        if (updateError) {
+          console.error('[Auto-Extract] Error saving research notes:', updateError);
+        } else {
+          console.log(`[Auto-Extract] ✅ Content extracted and saved for: ${data.title}`);
+        }
+      } catch (err) {
+        console.error('[Auto-Extract] Error:', err);
+      }
+    }).catch(err => {
+      console.error('[Auto-Extract] Extraction failed:', err);
+    });
+
     return res.status(200).json({
       success: true,
       article: data,
-      message: 'Article approved successfully - neural network is learning from this'
+      message: 'Article approved - extracting content in background'
     });
 
   } catch (error) {
