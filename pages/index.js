@@ -777,8 +777,16 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
+        // Extract text from summary - handle case where n8n returns {content: "text"}
+        let summaryText = result.summary || result.message || 'Summary generated';
+        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
+          summaryText = summaryText.content;
+        }
+        // Ensure we always have a string
+        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+
         const newSummary = {
-          text: result.summary || result.message || 'Summary generated',
+          text: summaryText,
           timestamp: new Date().toISOString(),
           id: Date.now()
         };
@@ -830,8 +838,16 @@ export default function Home() {
       if (response.ok) {
         const result = await response.json();
         const boxIndex = noteBoxes.findIndex(b => b.id === boxId);
+        // Extract text from summary - handle case where n8n returns {content: "text"}
+        let summaryText = result.summary || result.message || 'Summary generated';
+        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
+          summaryText = summaryText.content;
+        }
+        // Ensure we always have a string
+        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+
         const newSummary = {
-          text: result.summary || result.message || 'Summary generated',
+          text: summaryText,
           timestamp: new Date().toISOString(),
           id: Date.now(),
           articleNumber: boxIndex + 1
