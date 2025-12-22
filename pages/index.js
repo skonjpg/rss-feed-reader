@@ -114,6 +114,36 @@ export default function Home() {
     };
   }, []);
 
+  // Load summaries from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('rss_summaries');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setSummaries(Array.isArray(parsed) ? parsed : []);
+        console.log('[Summaries] Loaded from localStorage:', parsed.length);
+      }
+    } catch (error) {
+      console.error('[Summaries] Error loading from localStorage:', error);
+    }
+  }, []);
+
+  // Save summaries to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (summaries.length > 0) {
+        localStorage.setItem('rss_summaries', JSON.stringify(summaries));
+        console.log('[Summaries] Saved to localStorage:', summaries.length);
+      } else {
+        // Clear localStorage when summaries are empty
+        localStorage.removeItem('rss_summaries');
+        console.log('[Summaries] Cleared from localStorage');
+      }
+    } catch (error) {
+      console.error('[Summaries] Error saving to localStorage:', error);
+    }
+  }, [summaries]);
+
   const showStatus = (message, duration = 3000) => {
     setStatusMessage(message);
     setTimeout(() => setStatusMessage(''), duration);
@@ -777,13 +807,43 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        // Extract text from summary - handle case where n8n returns {content: "text"}
-        let summaryText = result.summary || result.message || 'Summary generated';
-        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
-          summaryText = summaryText.content;
+        console.log('[Summarize] Received result:', result);
+
+        // Extract text from summary - handle various n8n response formats
+        let summaryText = result.summary || result.message || result.text || result;
+        console.log('[Summarize] Initial summaryText:', summaryText);
+
+        // If it's an object, try to extract the actual text content
+        if (typeof summaryText === 'object' && summaryText !== null) {
+          // Try common property names for the actual text content
+          summaryText = summaryText.content ||
+                        summaryText.text ||
+                        summaryText.summary ||
+                        summaryText.message ||
+                        summaryText.result ||
+                        JSON.stringify(summaryText, null, 2); // Fallback: show formatted JSON
+          console.log('[Summarize] Extracted from object:', summaryText);
         }
+
+        // Handle arrays (e.g., content: [{text: "..."}, ...])
+        if (Array.isArray(summaryText)) {
+          console.log('[Summarize] summaryText is array:', summaryText);
+          summaryText = summaryText
+            .map(item => {
+              if (typeof item === 'string') return item;
+              if (typeof item === 'object' && item !== null) {
+                return item.text || item.content || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            })
+            .join('\n\n');
+          console.log('[Summarize] Extracted from array:', summaryText);
+        }
+
         // Ensure we always have a string
-        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+        if (typeof summaryText !== 'string') {
+          summaryText = summaryText ? String(summaryText) : 'Summary generated';
+        }
 
         const newSummary = {
           text: summaryText,
@@ -838,13 +898,43 @@ export default function Home() {
       if (response.ok) {
         const result = await response.json();
         const boxIndex = noteBoxes.findIndex(b => b.id === boxId);
-        // Extract text from summary - handle case where n8n returns {content: "text"}
-        let summaryText = result.summary || result.message || 'Summary generated';
-        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
-          summaryText = summaryText.content;
+        console.log('[Summarize Individual] Received result:', result);
+
+        // Extract text from summary - handle various n8n response formats
+        let summaryText = result.summary || result.message || result.text || result;
+        console.log('[Summarize Individual] Initial summaryText:', summaryText);
+
+        // If it's an object, try to extract the actual text content
+        if (typeof summaryText === 'object' && summaryText !== null) {
+          // Try common property names for the actual text content
+          summaryText = summaryText.content ||
+                        summaryText.text ||
+                        summaryText.summary ||
+                        summaryText.message ||
+                        summaryText.result ||
+                        JSON.stringify(summaryText, null, 2); // Fallback: show formatted JSON
+          console.log('[Summarize Individual] Extracted from object:', summaryText);
         }
+
+        // Handle arrays (e.g., content: [{text: "..."}, ...])
+        if (Array.isArray(summaryText)) {
+          console.log('[Summarize Individual] summaryText is array:', summaryText);
+          summaryText = summaryText
+            .map(item => {
+              if (typeof item === 'string') return item;
+              if (typeof item === 'object' && item !== null) {
+                return item.text || item.content || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            })
+            .join('\n\n');
+          console.log('[Summarize Individual] Extracted from array:', summaryText);
+        }
+
         // Ensure we always have a string
-        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+        if (typeof summaryText !== 'string') {
+          summaryText = summaryText ? String(summaryText) : 'Summary generated';
+        }
 
         const newSummary = {
           text: summaryText,
@@ -1195,13 +1285,6 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                         <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
-                        <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
                           title="Open article in new tab - then use bookmarklet to extract"
@@ -1292,13 +1375,6 @@ export default function Home() {
                           <span className="feed-date">{formatDate(item.pubDate)}</span>
                       <div className="feed-actions">
                         <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
-                        <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
                           title="Open article in new tab - then use bookmarklet to extract"
@@ -1370,12 +1446,6 @@ export default function Home() {
                           <div className="feed-meta">
                             <span className="feed-date">{formatDate(item.pubDate)}</span>
                             <div className="feed-actions">
-                              <button
-                                className="btn-visit"
-                                onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                              >
-                                View Article
-                              </button>
                               <button
                                 className="btn-flag"
                                 onClick={() => unhideArticle(item)}
@@ -1511,13 +1581,6 @@ export default function Home() {
                     <div className="feed-meta">
                       <span className="feed-date">{formatDate(item.pubDate)}</span>
                       <div className="feed-actions">
-                        <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
                         <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
@@ -1656,19 +1719,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            {summaries.length > 0 && (
-              <div className="summaries-list">
-                {summaries.map((summary) => (
-                  <div key={summary.id} className={`summary-section ${summary.isError ? 'error' : ''}`}>
-                    <div className="summary-header">
-                      <h3 className="summary-title">AI Summary</h3>
-                      <span className="summary-time">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
-                    </div>
-                    <div className="summary-content">{summary.text || 'No content'}</div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
