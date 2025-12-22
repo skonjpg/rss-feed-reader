@@ -1,5 +1,4 @@
 import { supabase } from '../../../lib/supabase';
-import { invalidateModelCache } from '../../../lib/neural-network-scorer';
 
 export default async function handler(req, res) {
   // Only allow POST requests
@@ -55,9 +54,6 @@ export default async function handler(req, res) {
       console.error('Error deleting prediction:', deleteError);
       // Don't fail the request if prediction deletion fails - article is already approved
     }
-
-    // Invalidate neural network cache since we have new training data
-    invalidateModelCache();
 
     return res.status(200).json({
       success: true,
