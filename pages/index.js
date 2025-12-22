@@ -898,6 +898,22 @@ export default function Home() {
     }
   };
 
+  const copySummaryToClipboard = async (summary) => {
+    try {
+      await navigator.clipboard.writeText(summary.text);
+      showStatus('✅ Summary copied to clipboard!');
+    } catch (err) {
+      showStatus('❌ Failed to copy to clipboard');
+    }
+  };
+
+  const deleteSummary = (summaryId) => {
+    if (confirm('Delete this summary?')) {
+      setSummaries(summaries.filter(s => s.id !== summaryId));
+      showStatus('🗑️ Summary deleted');
+    }
+  };
+
   const deleteJunkArticle = async (item) => {
     if (!confirm(`Permanently delete "${item.title}" from database?\n\nThis will remove it from training data.`)) {
       return;
@@ -1093,6 +1109,12 @@ export default function Home() {
                 onClick={() => setActiveTab('junk')}
               >
                 Junk ({junkArticles.length})
+              </button>
+              <button
+                className={`tab ${activeTab === 'summaries' ? 'active' : ''}`}
+                onClick={() => setActiveTab('summaries')}
+              >
+                Summaries ({summaries.length})
               </button>
             </div>
             <div className="ml-stats">
@@ -1445,7 +1467,7 @@ export default function Home() {
                   ))}
                 </>
               )
-            ) : (
+            ) : activeTab === 'junk' ? (
               junkArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">🗑️</div>
@@ -1487,6 +1509,44 @@ export default function Home() {
                           className="btn-danger"
                           onClick={() => deleteJunkArticle(item)}
                           title="Permanently delete from database"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
+            ) : (
+              summaries.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📝</div>
+                  <div className="empty-state-text">No AI summaries yet.<br />Paste articles and use "Summarize AI" to generate summaries.</div>
+                </div>
+              ) : (
+                summaries.map((summary) => (
+                  <div key={summary.id} className={`feed-item summary-item ${summary.isError ? 'error' : ''}`}>
+                    <div className="summary-header-inline">
+                      <span className="summary-badge">🤖 AI Summary</span>
+                      {summary.articleNumber && (
+                        <span className="article-number-badge">Article {summary.articleNumber}</span>
+                      )}
+                      <span className="summary-date">{formatDate(summary.timestamp)}</span>
+                    </div>
+                    <div className="summary-text">{summary.text}</div>
+                    <div className="feed-meta">
+                      <div className="feed-actions">
+                        <button
+                          className="btn-link"
+                          onClick={() => copySummaryToClipboard(summary)}
+                          title="Copy summary to clipboard"
+                        >
+                          📋 Copy
+                        </button>
+                        <button
+                          className="btn-danger"
+                          onClick={() => deleteSummary(summary.id)}
+                          title="Delete this summary"
                         >
                           Delete
                         </button>
@@ -2509,6 +2569,64 @@ export default function Home() {
           color: #0f172a;
           line-height: 1.7;
           white-space: pre-wrap;
+        }
+
+        /* Styles for summaries displayed in the main feed area */
+        .summary-item {
+          border-left: 4px solid #8b5cf6 !important;
+          background: #faf5ff !important;
+        }
+
+        .summary-item.error {
+          border-left-color: #dc2626 !important;
+          background: #fef2f2 !important;
+        }
+
+        .summary-header-inline {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+
+        .summary-badge {
+          background: #8b5cf6;
+          color: white;
+          padding: 4px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .article-number-badge {
+          background: #3b82f6;
+          color: white;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .summary-date {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 500;
+          margin-left: auto;
+        }
+
+        .summary-text {
+          font-size: 14px;
+          color: #0f172a;
+          line-height: 1.7;
+          white-space: pre-wrap;
+          margin-bottom: 16px;
+          padding: 12px;
+          background: white;
+          border-radius: 8px;
+          border: 1px solid #e1e8ed;
         }
 
         .loading {
