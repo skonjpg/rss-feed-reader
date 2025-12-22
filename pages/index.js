@@ -114,6 +114,36 @@ export default function Home() {
     };
   }, []);
 
+  // Load summaries from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('rss_summaries');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setSummaries(Array.isArray(parsed) ? parsed : []);
+        console.log('[Summaries] Loaded from localStorage:', parsed.length);
+      }
+    } catch (error) {
+      console.error('[Summaries] Error loading from localStorage:', error);
+    }
+  }, []);
+
+  // Save summaries to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (summaries.length > 0) {
+        localStorage.setItem('rss_summaries', JSON.stringify(summaries));
+        console.log('[Summaries] Saved to localStorage:', summaries.length);
+      } else {
+        // Clear localStorage when summaries are empty
+        localStorage.removeItem('rss_summaries');
+        console.log('[Summaries] Cleared from localStorage');
+      }
+    } catch (error) {
+      console.error('[Summaries] Error saving to localStorage:', error);
+    }
+  }, [summaries]);
+
   const showStatus = (message, duration = 3000) => {
     setStatusMessage(message);
     setTimeout(() => setStatusMessage(''), duration);
@@ -1255,13 +1285,6 @@ export default function Home() {
                         <span className="feed-date">{formatDate(item.pubDate)}</span>
                         <div className="feed-actions">
                         <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
-                        <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
                           title="Open article in new tab - then use bookmarklet to extract"
@@ -1352,13 +1375,6 @@ export default function Home() {
                           <span className="feed-date">{formatDate(item.pubDate)}</span>
                       <div className="feed-actions">
                         <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
-                        <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
                           title="Open article in new tab - then use bookmarklet to extract"
@@ -1430,12 +1446,6 @@ export default function Home() {
                           <div className="feed-meta">
                             <span className="feed-date">{formatDate(item.pubDate)}</span>
                             <div className="feed-actions">
-                              <button
-                                className="btn-visit"
-                                onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
-                              >
-                                View Article
-                              </button>
                               <button
                                 className="btn-flag"
                                 onClick={() => unhideArticle(item)}
@@ -1571,13 +1581,6 @@ export default function Home() {
                     <div className="feed-meta">
                       <span className="feed-date">{formatDate(item.pubDate)}</span>
                       <div className="feed-actions">
-                        <button
-                          className="btn-visit"
-                          onClick={() => fetchArticleContent(item)}
-                          title="Add article content to research notes"
-                        >
-                          View Article
-                        </button>
                         <button
                           className="btn-link"
                           onClick={() => window.open(item.link, '_blank', 'noopener,noreferrer')}
