@@ -15,18 +15,12 @@ export default function Home() {
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', 'approved', or 'junk'
-  const [collapsedSections, setCollapsedSections] = useState({}); // Track which sections are collapsed
+  const [hideHiddenArticles, setHideHiddenArticles] = useState(false); // Track if hidden articles section is collapsed
+  const [hidePublishedArticles, setHidePublishedArticles] = useState(false); // Track if published articles section is collapsed
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
   const [addingManualArticle, setAddingManualArticle] = useState(false);
-
-  const toggleSection = (section) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -1214,49 +1208,34 @@ export default function Home() {
           <div className="feed-controls">
             <div className="tabs">
               <button
-                className={`tab ${activeTab === 'all' ? 'active' : ''} ${collapsedSections['all'] ? 'collapsed' : ''}`}
+                className={`tab ${activeTab === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveTab('all')}
               >
-                <span className="tab-content">All Articles ({sortedItems.length})</span>
-                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('all'); }}>
-                  {collapsedSections['all'] ? '▶' : '▼'}
-                </span>
+                All Articles ({sortedItems.length})
               </button>
               <button
-                className={`tab ${activeTab === 'flagged' ? 'active' : ''} ${collapsedSections['flagged'] ? 'collapsed' : ''}`}
+                className={`tab ${activeTab === 'flagged' ? 'active' : ''}`}
                 onClick={() => setActiveTab('flagged')}
               >
-                <span className="tab-content">Flagged ({flaggedArticles.length})</span>
-                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('flagged'); }}>
-                  {collapsedSections['flagged'] ? '▶' : '▼'}
-                </span>
+                Flagged ({flaggedArticles.length})
               </button>
               <button
-                className={`tab ${activeTab === 'approved' ? 'active' : ''} ${collapsedSections['approved'] ? 'collapsed' : ''}`}
+                className={`tab ${activeTab === 'approved' ? 'active' : ''}`}
                 onClick={() => setActiveTab('approved')}
               >
-                <span className="tab-content">Approved ({approvedArticles.length})</span>
-                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('approved'); }}>
-                  {collapsedSections['approved'] ? '▶' : '▼'}
-                </span>
+                Approved ({approvedArticles.length})
               </button>
               <button
-                className={`tab ${activeTab === 'junk' ? 'active' : ''} ${collapsedSections['junk'] ? 'collapsed' : ''}`}
+                className={`tab ${activeTab === 'junk' ? 'active' : ''}`}
                 onClick={() => setActiveTab('junk')}
               >
-                <span className="tab-content">Junk ({junkArticles.length})</span>
-                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('junk'); }}>
-                  {collapsedSections['junk'] ? '▶' : '▼'}
-                </span>
+                Junk ({junkArticles.length})
               </button>
               <button
-                className={`tab ${activeTab === 'summaries' ? 'active' : ''} ${collapsedSections['summaries'] ? 'collapsed' : ''}`}
+                className={`tab ${activeTab === 'summaries' ? 'active' : ''}`}
                 onClick={() => setActiveTab('summaries')}
               >
-                <span className="tab-content">Summaries ({summaries.length})</span>
-                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('summaries'); }}>
-                  {collapsedSections['summaries'] ? '▶' : '▼'}
-                </span>
+                Summaries ({summaries.length})
               </button>
             </div>
             <div className="ml-stats">
@@ -1273,7 +1252,7 @@ export default function Home() {
           <div className="feed-list">
             {loading ? (
               <div className="loading">Loading feeds</div>
-            ) : activeTab === 'all' && !collapsedSections['all'] ? (
+            ) : activeTab === 'all' ? (
               sortedItems.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📭</div>
@@ -1338,7 +1317,7 @@ export default function Home() {
                   );
                 })
               )
-            ) : activeTab === 'flagged' && !collapsedSections['flagged'] ? (
+            ) : activeTab === 'flagged' ? (
               <>
                 <div className="manual-article-input">
                   <input
@@ -1436,13 +1415,15 @@ export default function Home() {
 
                     {/* Divider if there are hidden articles */}
                     {flaggedArticles.filter(item => item.hidden).length > 0 && (
-                      <div className="hidden-divider">
-                        <span>Hidden Articles ({flaggedArticles.filter(item => item.hidden).length})</span>
+                      <div className="hidden-divider" onClick={() => setHideHiddenArticles(!hideHiddenArticles)} style={{cursor: 'pointer'}}>
+                        <span>
+                          {hideHiddenArticles ? '▶' : '▼'} Hidden Articles ({flaggedArticles.filter(item => item.hidden).length})
+                        </span>
                       </div>
                     )}
 
                     {/* Hidden flagged articles */}
-                    {flaggedArticles.filter(item => item.hidden).map((item) => {
+                    {!hideHiddenArticles && flaggedArticles.filter(item => item.hidden).map((item) => {
                       const scoreData = confidenceScores[item.link];
                       const confidence = scoreData?.confidence;
                       const getConfidenceLevel = (score) => {
@@ -1501,7 +1482,7 @@ export default function Home() {
                   </>
                 )}
               </>
-            ) : activeTab === 'approved' && !collapsedSections['approved'] ? (
+            ) : activeTab === 'approved' ? (
               approvedArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">✓</div>
@@ -1547,13 +1528,15 @@ export default function Home() {
 
                   {/* Divider if there are published articles */}
                   {approvedArticles.filter(item => item.published).length > 0 && (
-                    <div className="hidden-divider">
-                      <span>Published Articles ({approvedArticles.filter(item => item.published).length})</span>
+                    <div className="hidden-divider" onClick={() => setHidePublishedArticles(!hidePublishedArticles)} style={{cursor: 'pointer'}}>
+                      <span>
+                        {hidePublishedArticles ? '▶' : '▼'} Published Articles ({approvedArticles.filter(item => item.published).length})
+                      </span>
                     </div>
                   )}
 
                   {/* Published approved articles */}
-                  {approvedArticles.filter(item => item.published).map((item) => (
+                  {!hidePublishedArticles && approvedArticles.filter(item => item.published).map((item) => (
                     <div key={item.dbId || item.id} className="feed-item approved published-article">
                       <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
                       <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
@@ -1589,7 +1572,7 @@ export default function Home() {
                   ))}
                 </>
               )
-            ) : activeTab === 'junk' && !collapsedSections['junk'] ? (
+            ) : activeTab === 'junk' ? (
               junkArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">🗑️</div>
@@ -1632,7 +1615,7 @@ export default function Home() {
                   </div>
                 ))
               )
-            ) : activeTab === 'summaries' && !collapsedSections['summaries'] ? (
+            ) : activeTab === 'summaries' ? (
               summaries.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📝</div>
@@ -1847,10 +1830,6 @@ export default function Home() {
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           transition: all 0.2s;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
         }
 
         .tab:hover {
@@ -1862,25 +1841,6 @@ export default function Home() {
           background: #002855;
           color: white;
           border-color: #002855;
-        }
-
-        .tab.collapsed {
-          opacity: 0.6;
-        }
-
-        .tab-content {
-          flex: 1;
-        }
-
-        .collapse-toggle {
-          font-size: 12px;
-          padding: 4px;
-          opacity: 0.7;
-          transition: opacity 0.2s;
-        }
-
-        .collapse-toggle:hover {
-          opacity: 1;
         }
 
         .ml-stats {
