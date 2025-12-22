@@ -47,11 +47,19 @@ export default function Home() {
 
   // Listen for article content from bookmarklet via postMessage AND localStorage
   useEffect(() => {
+    const pasteToFirstBox = (content) => {
+      setNoteBoxes(prev => {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], content: content };
+        return updated;
+      });
+    };
+
     // Method 1: postMessage (instant)
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'ARTICLE_CONTENT') {
         console.log('[Bookmarklet] Received via postMessage:', event.data.content.substring(0, 100) + '...');
-        setNotes(event.data.content);
+        pasteToFirstBox(event.data.content);
         showStatus('✅ Article auto-pasted!', 3000);
       }
     };
@@ -64,7 +72,7 @@ export default function Home() {
           const data = JSON.parse(e.newValue);
           if (data.timestamp > lastCheckedTimestamp) {
             console.log('[Bookmarklet] Received via storage event (INSTANT):', data.content.substring(0, 100) + '...');
-            setNotes(data.content);
+            pasteToFirstBox(data.content);
             showStatus('✅ Article auto-pasted!', 3000);
             lastCheckedTimestamp = data.timestamp;
             localStorage.removeItem('rss_article_content');
@@ -83,7 +91,7 @@ export default function Home() {
           const data = JSON.parse(stored);
           if (data.timestamp > lastCheckedTimestamp) {
             console.log('[Bookmarklet] Received via localStorage polling:', data.content.substring(0, 100) + '...');
-            setNotes(data.content);
+            pasteToFirstBox(data.content);
             showStatus('✅ Article auto-pasted!', 3000);
             lastCheckedTimestamp = data.timestamp;
             localStorage.removeItem('rss_article_content');
@@ -952,9 +960,14 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
 
-        // Add article content to notes
-        const articleNote = `\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
-        setNotes(prevNotes => prevNotes + articleNote);
+        // Add article content to the first note box
+        const articleNote = `--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
+        setNoteBoxes(prev => {
+          const updated = [...prev];
+          const currentContent = updated[0].content || '';
+          updated[0] = { ...updated[0], content: currentContent ? currentContent + '\n\n' + articleNote : articleNote };
+          return updated;
+        });
 
         showStatus('✅ Full article content added to notes!');
       } else {
@@ -1527,9 +1540,9 @@ export default function Home() {
                       {summary.articleNumber && (
                         <span className="article-number-badge">Article {summary.articleNumber}</span>
                       )}
-                      <span className="summary-date">{formatDate(summary.timestamp)}</span>
+                      <span className="summary-date">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
                     </div>
-                    <div className="summary-text">{summary.text}</div>
+                    <div className="summary-text">{summary.text || 'No content'}</div>
                     <div className="feed-meta">
                       <div className="feed-actions">
                         <button
@@ -1629,9 +1642,9 @@ export default function Home() {
                   <div key={summary.id} className={`summary-section ${summary.isError ? 'error' : ''}`}>
                     <div className="summary-header">
                       <h3 className="summary-title">AI Summary</h3>
-                      <span className="summary-time">{formatDate(summary.timestamp)}</span>
+                      <span className="summary-time">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
                     </div>
-                    <div className="summary-content">{summary.text}</div>
+                    <div className="summary-content">{summary.text || 'No content'}</div>
                   </div>
                 ))}
               </div>
