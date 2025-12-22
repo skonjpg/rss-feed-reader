@@ -48,9 +48,10 @@ export default function Home() {
   // Listen for article content from bookmarklet via postMessage AND localStorage
   useEffect(() => {
     const pasteToFirstBox = (content) => {
+      const safeContent = typeof content === 'string' ? content : String(content || '');
       setNoteBoxes(prev => {
         const updated = [...prev];
-        updated[0] = { ...updated[0], content: content };
+        updated[0] = { ...updated[0], content: safeContent };
         return updated;
       });
     };
@@ -872,8 +873,10 @@ export default function Home() {
   };
 
   const updateNoteBox = (id, content) => {
+    // Ensure content is always a string to prevent React rendering errors
+    const safeContent = typeof content === 'string' ? content : String(content || '');
     setNoteBoxes(noteBoxes.map(box =>
-      box.id === id ? { ...box, content } : box
+      box.id === id ? { ...box, content: safeContent } : box
     ));
   };
 
@@ -964,8 +967,9 @@ export default function Home() {
         const articleNote = `--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
         setNoteBoxes(prev => {
           const updated = [...prev];
-          const currentContent = updated[0].content || '';
-          updated[0] = { ...updated[0], content: currentContent ? currentContent + '\n\n' + articleNote : articleNote };
+          const currentContent = String(updated[0].content || '');
+          const newContent = currentContent ? currentContent + '\n\n' + articleNote : articleNote;
+          updated[0] = { ...updated[0], content: String(newContent) };
           return updated;
         });
 
