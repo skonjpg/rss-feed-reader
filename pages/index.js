@@ -770,7 +770,7 @@ export default function Home() {
         const result = await response.json();
         const newSummary = {
           text: result.summary || result.message || 'Summary generated',
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           id: Date.now()
         };
         setSummaries([newSummary, ...summaries]);
@@ -783,7 +783,7 @@ export default function Home() {
       showStatus('❌ Error: ' + error.message);
       const errorSummary = {
         text: 'Error generating summary: ' + error.message,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         id: Date.now(),
         isError: true
       };
@@ -823,7 +823,7 @@ export default function Home() {
         const boxIndex = noteBoxes.findIndex(b => b.id === boxId);
         const newSummary = {
           text: result.summary || result.message || 'Summary generated',
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           id: Date.now(),
           articleNumber: boxIndex + 1
         };
@@ -837,7 +837,7 @@ export default function Home() {
       showStatus('❌ Error: ' + error.message);
       const errorSummary = {
         text: 'Error generating summary: ' + error.message,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         id: Date.now(),
         isError: true
       };
@@ -1513,7 +1513,7 @@ export default function Home() {
                   </div>
                 ))
               )
-            ) : (
+            ) : activeTab === 'summaries' ? (
               summaries.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📝</div>
@@ -1551,7 +1551,7 @@ export default function Home() {
                   </div>
                 ))
               )
-            )}
+            ) : null}
           </div>
         </div>
 
