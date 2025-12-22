@@ -1592,7 +1592,7 @@ export default function Home() {
                     </div>
                     <textarea
                       className="notes-textarea"
-                      value={box.content}
+                      value={box.content || ''}
                       onChange={(e) => updateNoteBox(box.id, e.target.value)}
                       placeholder="Paste article content here..."
                     />
@@ -1605,7 +1605,7 @@ export default function Home() {
                       </button>
                       <button
                         onClick={() => summarizeIndividualBox(box.id)}
-                        disabled={summarizingBoxes.includes(box.id) || !box.content.trim()}
+                        disabled={summarizingBoxes.includes(box.id) || !(box.content || '').trim()}
                         className="btn-summarize-box"
                       >
                         {summarizingBoxes.includes(box.id) ? '⏳ Summarizing...' : '🤖 Summarize AI'}
