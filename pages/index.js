@@ -777,13 +777,28 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        // Extract text from summary - handle case where n8n returns {content: "text"}
-        let summaryText = result.summary || result.message || 'Summary generated';
-        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
-          summaryText = summaryText.content;
+        console.log('[Summarize] Received result:', result);
+
+        // Extract text from summary - handle various n8n response formats
+        let summaryText = result.summary || result.message || result.text || result;
+        console.log('[Summarize] Initial summaryText:', summaryText);
+
+        // If it's an object, try to extract the actual text content
+        if (typeof summaryText === 'object' && summaryText !== null) {
+          // Try common property names for the actual text content
+          summaryText = summaryText.content ||
+                        summaryText.text ||
+                        summaryText.summary ||
+                        summaryText.message ||
+                        summaryText.result ||
+                        JSON.stringify(summaryText, null, 2); // Fallback: show formatted JSON
+          console.log('[Summarize] Extracted from object:', summaryText);
         }
+
         // Ensure we always have a string
-        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+        if (typeof summaryText !== 'string') {
+          summaryText = summaryText ? String(summaryText) : 'Summary generated';
+        }
 
         const newSummary = {
           text: summaryText,
@@ -838,13 +853,28 @@ export default function Home() {
       if (response.ok) {
         const result = await response.json();
         const boxIndex = noteBoxes.findIndex(b => b.id === boxId);
-        // Extract text from summary - handle case where n8n returns {content: "text"}
-        let summaryText = result.summary || result.message || 'Summary generated';
-        if (typeof summaryText === 'object' && summaryText !== null && summaryText.content) {
-          summaryText = summaryText.content;
+        console.log('[Summarize Individual] Received result:', result);
+
+        // Extract text from summary - handle various n8n response formats
+        let summaryText = result.summary || result.message || result.text || result;
+        console.log('[Summarize Individual] Initial summaryText:', summaryText);
+
+        // If it's an object, try to extract the actual text content
+        if (typeof summaryText === 'object' && summaryText !== null) {
+          // Try common property names for the actual text content
+          summaryText = summaryText.content ||
+                        summaryText.text ||
+                        summaryText.summary ||
+                        summaryText.message ||
+                        summaryText.result ||
+                        JSON.stringify(summaryText, null, 2); // Fallback: show formatted JSON
+          console.log('[Summarize Individual] Extracted from object:', summaryText);
         }
+
         // Ensure we always have a string
-        summaryText = typeof summaryText === 'string' ? summaryText : String(summaryText);
+        if (typeof summaryText !== 'string') {
+          summaryText = summaryText ? String(summaryText) : 'Summary generated';
+        }
 
         const newSummary = {
           text: summaryText,
@@ -1656,19 +1686,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            {summaries.length > 0 && (
-              <div className="summaries-list">
-                {summaries.map((summary) => (
-                  <div key={summary.id} className={`summary-section ${summary.isError ? 'error' : ''}`}>
-                    <div className="summary-header">
-                      <h3 className="summary-title">AI Summary</h3>
-                      <span className="summary-time">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
-                    </div>
-                    <div className="summary-content">{summary.text || 'No content'}</div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
