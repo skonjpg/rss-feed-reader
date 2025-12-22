@@ -10,7 +10,7 @@ export default function Home() {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
-  const [summarizingBoxes, setSummarizingBoxes] = useState(new Set()); // Track which boxes are being summarized
+  const [summarizingBoxes, setSummarizingBoxes] = useState([]); // Track which boxes are being summarized
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
@@ -800,8 +800,8 @@ export default function Home() {
       return;
     }
 
-    // Add this box to the set of boxes being summarized
-    setSummarizingBoxes(prev => new Set([...prev, boxId]));
+    // Add this box to the list of boxes being summarized
+    setSummarizingBoxes(prev => [...prev, boxId]);
 
     try {
       showStatus('🤖 Summarizing article...');
@@ -843,12 +843,8 @@ export default function Home() {
       };
       setSummaries([errorSummary, ...summaries]);
     } finally {
-      // Remove this box from the set of boxes being summarized
-      setSummarizingBoxes(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(boxId);
-        return newSet;
-      });
+      // Remove this box from the list of boxes being summarized
+      setSummarizingBoxes(prev => prev.filter(id => id !== boxId));
     }
   };
 
@@ -1596,10 +1592,10 @@ export default function Home() {
                       </button>
                       <button
                         onClick={() => summarizeIndividualBox(box.id)}
-                        disabled={summarizingBoxes.has(box.id) || !box.content.trim()}
+                        disabled={summarizingBoxes.includes(box.id) || !box.content.trim()}
                         className="btn-summarize-box"
                       >
-                        {summarizingBoxes.has(box.id) ? '⏳ Summarizing...' : '🤖 Summarize AI'}
+                        {summarizingBoxes.includes(box.id) ? '⏳ Summarizing...' : '🤖 Summarize AI'}
                       </button>
                     </div>
                   </div>
