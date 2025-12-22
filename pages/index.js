@@ -10,6 +10,7 @@ export default function Home() {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
+  const [summarizingBoxes, setSummarizingBoxes] = useState(new Set()); // Track which boxes are being summarized
   const [statusMessage, setStatusMessage] = useState('');
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
@@ -792,6 +793,65 @@ export default function Home() {
     }
   };
 
+  const summarizeIndividualBox = async (boxId) => {
+    const box = noteBoxes.find(b => b.id === boxId);
+    if (!box || !box.content.trim()) {
+      showStatus('⚠️ Please enter some content to summarize');
+      return;
+    }
+
+    // Add this box to the set of boxes being summarized
+    setSummarizingBoxes(prev => new Set([...prev, boxId]));
+
+    try {
+      showStatus('🤖 Summarizing article...');
+
+      const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || '/api/articles/summarize-notes';
+
+      const response = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: box.content.trim(),
+          noteCount: 1,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const boxIndex = noteBoxes.findIndex(b => b.id === boxId);
+        const newSummary = {
+          text: result.summary || result.message || 'Summary generated',
+          timestamp: new Date(),
+          id: Date.now(),
+          articleNumber: boxIndex + 1
+        };
+        setSummaries([newSummary, ...summaries]);
+        showStatus('✅ Summary generated!');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Failed to generate summary');
+      }
+    } catch (error) {
+      showStatus('❌ Error: ' + error.message);
+      const errorSummary = {
+        text: 'Error generating summary: ' + error.message,
+        timestamp: new Date(),
+        id: Date.now(),
+        isError: true
+      };
+      setSummaries([errorSummary, ...summaries]);
+    } finally {
+      // Remove this box from the set of boxes being summarized
+      setSummarizingBoxes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(boxId);
+        return newSet;
+      });
+    }
+  };
+
   const addNoteBox = () => {
     const newId = Math.max(...noteBoxes.map(box => box.id), 0) + 1;
     setNoteBoxes([...noteBoxes, { id: newId, content: '' }]);
@@ -1467,12 +1527,21 @@ export default function Home() {
                       onChange={(e) => updateNoteBox(box.id, e.target.value)}
                       placeholder="Paste article content here..."
                     />
-                    <button
-                      onClick={() => pasteIntoNoteBox(box.id)}
-                      className="btn-paste-box"
-                    >
-                      📋 Paste Article
-                    </button>
+                    <div className="note-box-actions">
+                      <button
+                        onClick={() => pasteIntoNoteBox(box.id)}
+                        className="btn-paste-box"
+                      >
+                        📋 Paste Article
+                      </button>
+                      <button
+                        onClick={() => summarizeIndividualBox(box.id)}
+                        disabled={summarizingBoxes.has(box.id) || !box.content.trim()}
+                        className="btn-summarize-box"
+                      >
+                        {summarizingBoxes.has(box.id) ? '⏳ Summarizing...' : '🤖 Summarize AI'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2220,8 +2289,14 @@ export default function Home() {
           cursor: not-allowed;
         }
 
-        .btn-paste-box {
+        .note-box-actions {
+          display: flex;
+          gap: 8px;
           margin-top: 8px;
+        }
+
+        .btn-paste-box {
+          flex: 1;
           padding: 8px 16px;
           background: #3b82f6;
           color: white;
@@ -2236,6 +2311,30 @@ export default function Home() {
         .btn-paste-box:hover {
           background: #2563eb;
           transform: translateY(-1px);
+        }
+
+        .btn-summarize-box {
+          flex: 1;
+          padding: 8px 16px;
+          background: #8b5cf6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .btn-summarize-box:hover:not(:disabled) {
+          background: #7c3aed;
+          transform: translateY(-1px);
+        }
+
+        .btn-summarize-box:disabled {
+          background: #d1d5db;
+          cursor: not-allowed;
+          opacity: 0.6;
         }
 
         .btn-add-box {
