@@ -15,10 +15,18 @@ export default function Home() {
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', 'approved', or 'junk'
+  const [collapsedSections, setCollapsedSections] = useState({}); // Track which sections are collapsed
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
   const [addingManualArticle, setAddingManualArticle] = useState(false);
+
+  const toggleSection = (section) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   useEffect(() => {
     // Load feeds, flagged, approved, and junk articles on mount
@@ -1206,34 +1214,49 @@ export default function Home() {
           <div className="feed-controls">
             <div className="tabs">
               <button
-                className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+                className={`tab ${activeTab === 'all' ? 'active' : ''} ${collapsedSections['all'] ? 'collapsed' : ''}`}
                 onClick={() => setActiveTab('all')}
               >
-                All Articles ({sortedItems.length})
+                <span className="tab-content">All Articles ({sortedItems.length})</span>
+                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('all'); }}>
+                  {collapsedSections['all'] ? '▶' : '▼'}
+                </span>
               </button>
               <button
-                className={`tab ${activeTab === 'flagged' ? 'active' : ''}`}
+                className={`tab ${activeTab === 'flagged' ? 'active' : ''} ${collapsedSections['flagged'] ? 'collapsed' : ''}`}
                 onClick={() => setActiveTab('flagged')}
               >
-                Flagged ({flaggedArticles.length})
+                <span className="tab-content">Flagged ({flaggedArticles.length})</span>
+                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('flagged'); }}>
+                  {collapsedSections['flagged'] ? '▶' : '▼'}
+                </span>
               </button>
               <button
-                className={`tab ${activeTab === 'approved' ? 'active' : ''}`}
+                className={`tab ${activeTab === 'approved' ? 'active' : ''} ${collapsedSections['approved'] ? 'collapsed' : ''}`}
                 onClick={() => setActiveTab('approved')}
               >
-                Approved ({approvedArticles.length})
+                <span className="tab-content">Approved ({approvedArticles.length})</span>
+                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('approved'); }}>
+                  {collapsedSections['approved'] ? '▶' : '▼'}
+                </span>
               </button>
               <button
-                className={`tab ${activeTab === 'junk' ? 'active' : ''}`}
+                className={`tab ${activeTab === 'junk' ? 'active' : ''} ${collapsedSections['junk'] ? 'collapsed' : ''}`}
                 onClick={() => setActiveTab('junk')}
               >
-                Junk ({junkArticles.length})
+                <span className="tab-content">Junk ({junkArticles.length})</span>
+                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('junk'); }}>
+                  {collapsedSections['junk'] ? '▶' : '▼'}
+                </span>
               </button>
               <button
-                className={`tab ${activeTab === 'summaries' ? 'active' : ''}`}
+                className={`tab ${activeTab === 'summaries' ? 'active' : ''} ${collapsedSections['summaries'] ? 'collapsed' : ''}`}
                 onClick={() => setActiveTab('summaries')}
               >
-                Summaries ({summaries.length})
+                <span className="tab-content">Summaries ({summaries.length})</span>
+                <span className="collapse-toggle" onClick={(e) => { e.stopPropagation(); toggleSection('summaries'); }}>
+                  {collapsedSections['summaries'] ? '▶' : '▼'}
+                </span>
               </button>
             </div>
             <div className="ml-stats">
@@ -1250,7 +1273,7 @@ export default function Home() {
           <div className="feed-list">
             {loading ? (
               <div className="loading">Loading feeds</div>
-            ) : activeTab === 'all' ? (
+            ) : activeTab === 'all' && !collapsedSections['all'] ? (
               sortedItems.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📭</div>
@@ -1315,7 +1338,7 @@ export default function Home() {
                   );
                 })
               )
-            ) : activeTab === 'flagged' ? (
+            ) : activeTab === 'flagged' && !collapsedSections['flagged'] ? (
               <>
                 <div className="manual-article-input">
                   <input
@@ -1478,7 +1501,7 @@ export default function Home() {
                   </>
                 )}
               </>
-            ) : activeTab === 'approved' ? (
+            ) : activeTab === 'approved' && !collapsedSections['approved'] ? (
               approvedArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">✓</div>
@@ -1566,7 +1589,7 @@ export default function Home() {
                   ))}
                 </>
               )
-            ) : activeTab === 'junk' ? (
+            ) : activeTab === 'junk' && !collapsedSections['junk'] ? (
               junkArticles.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">🗑️</div>
@@ -1609,7 +1632,7 @@ export default function Home() {
                   </div>
                 ))
               )
-            ) : activeTab === 'summaries' ? (
+            ) : activeTab === 'summaries' && !collapsedSections['summaries'] ? (
               summaries.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state-icon">📝</div>
@@ -1824,6 +1847,10 @@ export default function Home() {
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
         }
 
         .tab:hover {
@@ -1835,6 +1862,25 @@ export default function Home() {
           background: #002855;
           color: white;
           border-color: #002855;
+        }
+
+        .tab.collapsed {
+          opacity: 0.6;
+        }
+
+        .tab-content {
+          flex: 1;
+        }
+
+        .collapse-toggle {
+          font-size: 12px;
+          padding: 4px;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        }
+
+        .collapse-toggle:hover {
+          opacity: 1;
         }
 
         .ml-stats {
