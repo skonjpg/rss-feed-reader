@@ -795,6 +795,21 @@ export default function Home() {
           console.log('[Summarize] Extracted from object:', summaryText);
         }
 
+        // Handle arrays (e.g., content: [{text: "..."}, ...])
+        if (Array.isArray(summaryText)) {
+          console.log('[Summarize] summaryText is array:', summaryText);
+          summaryText = summaryText
+            .map(item => {
+              if (typeof item === 'string') return item;
+              if (typeof item === 'object' && item !== null) {
+                return item.text || item.content || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            })
+            .join('\n\n');
+          console.log('[Summarize] Extracted from array:', summaryText);
+        }
+
         // Ensure we always have a string
         if (typeof summaryText !== 'string') {
           summaryText = summaryText ? String(summaryText) : 'Summary generated';
@@ -869,6 +884,21 @@ export default function Home() {
                         summaryText.result ||
                         JSON.stringify(summaryText, null, 2); // Fallback: show formatted JSON
           console.log('[Summarize Individual] Extracted from object:', summaryText);
+        }
+
+        // Handle arrays (e.g., content: [{text: "..."}, ...])
+        if (Array.isArray(summaryText)) {
+          console.log('[Summarize Individual] summaryText is array:', summaryText);
+          summaryText = summaryText
+            .map(item => {
+              if (typeof item === 'string') return item;
+              if (typeof item === 'object' && item !== null) {
+                return item.text || item.content || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            })
+            .join('\n\n');
+          console.log('[Summarize Individual] Extracted from array:', summaryText);
         }
 
         // Ensure we always have a string
