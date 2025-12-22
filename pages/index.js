@@ -1582,8 +1582,8 @@ export default function Home() {
           <div className="notes-content">
             <div className="notes-editor">
               <div className="note-boxes-container">
-                {noteBoxes.map((box, index) => (
-                  <div key={box.id} className="note-box">
+                {Array.isArray(noteBoxes) && noteBoxes.filter(box => box && typeof box === 'object').map((box, index) => (
+                  <div key={box.id || index} className="note-box">
                     <div className="note-box-header">
                       <span className="note-box-label">Article {index + 1}</span>
                       <button
@@ -1596,7 +1596,7 @@ export default function Home() {
                     </div>
                     <textarea
                       className="notes-textarea"
-                      value={box.content || ''}
+                      value={typeof box.content === 'string' ? box.content : ''}
                       onChange={(e) => updateNoteBox(box.id, e.target.value)}
                       placeholder="Paste article content here..."
                     />
