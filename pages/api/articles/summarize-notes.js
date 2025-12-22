@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
     // n8n webhook URL - can be overridden with N8N_WEBHOOK_URL environment variable
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL ||
-      'https://edgewater.app.n8n.cloud/webhook-test/4e0da20e-9a6a-4b3d-9d27-d4a73ab54cda';
+      'https://edgewater.app.n8n.cloud/webhook/4e0da20e-9a6a-4b3d-9d27-d4a73ab54cda';
 
     // Send notes to n8n webhook
     const n8nResponse = await fetch(n8nWebhookUrl, {
