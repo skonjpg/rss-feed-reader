@@ -47,11 +47,19 @@ export default function Home() {
 
   // Listen for article content from bookmarklet via postMessage AND localStorage
   useEffect(() => {
+    const pasteToFirstBox = (content) => {
+      setNoteBoxes(prev => {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], content: content };
+        return updated;
+      });
+    };
+
     // Method 1: postMessage (instant)
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'ARTICLE_CONTENT') {
         console.log('[Bookmarklet] Received via postMessage:', event.data.content.substring(0, 100) + '...');
-        setNotes(event.data.content);
+        pasteToFirstBox(event.data.content);
         showStatus('✅ Article auto-pasted!', 3000);
       }
     };
@@ -64,7 +72,7 @@ export default function Home() {
           const data = JSON.parse(e.newValue);
           if (data.timestamp > lastCheckedTimestamp) {
             console.log('[Bookmarklet] Received via storage event (INSTANT):', data.content.substring(0, 100) + '...');
-            setNotes(data.content);
+            pasteToFirstBox(data.content);
             showStatus('✅ Article auto-pasted!', 3000);
             lastCheckedTimestamp = data.timestamp;
             localStorage.removeItem('rss_article_content');
@@ -83,7 +91,7 @@ export default function Home() {
           const data = JSON.parse(stored);
           if (data.timestamp > lastCheckedTimestamp) {
             console.log('[Bookmarklet] Received via localStorage polling:', data.content.substring(0, 100) + '...');
-            setNotes(data.content);
+            pasteToFirstBox(data.content);
             showStatus('✅ Article auto-pasted!', 3000);
             lastCheckedTimestamp = data.timestamp;
             localStorage.removeItem('rss_article_content');
@@ -952,9 +960,14 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
 
-        // Add article content to notes
-        const articleNote = `\n--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
-        setNotes(prevNotes => prevNotes + articleNote);
+        // Add article content to the first note box
+        const articleNote = `--- ${article.title} ---\nSource: ${article.sourceName}\nURL: ${article.link}\n\n${data.content}\n---\n`;
+        setNoteBoxes(prev => {
+          const updated = [...prev];
+          const currentContent = updated[0].content || '';
+          updated[0] = { ...updated[0], content: currentContent ? currentContent + '\n\n' + articleNote : articleNote };
+          return updated;
+        });
 
         showStatus('✅ Full article content added to notes!');
       } else {
