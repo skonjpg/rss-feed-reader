@@ -1705,13 +1705,6 @@ export default function Home() {
                   ➕ Add Article Box
                 </button>
                 <button
-                  onClick={summarizeWithAI}
-                  disabled={summarizing || noteBoxes.every(box => !box.content.trim())}
-                  className="btn-ai"
-                >
-                  {summarizing ? '🤖 Summarizing...' : '🤖 Summarize with AI'}
-                </button>
-                <button
                   onClick={clearNotes}
                   className="btn-clear"
                 >
