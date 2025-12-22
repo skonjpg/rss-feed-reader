@@ -15,6 +15,8 @@ export default function Home() {
   const [dividerPosition, setDividerPosition] = useState(60); // percentage
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'flagged', 'approved', or 'junk'
+  const [hideHiddenArticles, setHideHiddenArticles] = useState(false); // Track if hidden articles section is collapsed
+  const [hidePublishedArticles, setHidePublishedArticles] = useState(false); // Track if published articles section is collapsed
   const [confidenceScores, setConfidenceScores] = useState({}); // Map of link -> {confidence, reasoning}
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [manualArticleUrl, setManualArticleUrl] = useState('');
@@ -114,35 +116,58 @@ export default function Home() {
     };
   }, []);
 
-  // Load summaries from localStorage on mount
-  useEffect(() => {
+  // Load summaries from Supabase on mount
+  const loadSummaries = async () => {
     try {
-      const stored = localStorage.getItem('rss_summaries');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSummaries(Array.isArray(parsed) ? parsed : []);
-        console.log('[Summaries] Loaded from localStorage:', parsed.length);
-      }
-    } catch (error) {
-      console.error('[Summaries] Error loading from localStorage:', error);
-    }
-  }, []);
+      const response = await fetch('/api/summaries');
+      if (!response.ok) throw new Error('Failed to fetch summaries');
 
-  // Save summaries to localStorage whenever they change
-  useEffect(() => {
-    try {
-      if (summaries.length > 0) {
-        localStorage.setItem('rss_summaries', JSON.stringify(summaries));
-        console.log('[Summaries] Saved to localStorage:', summaries.length);
-      } else {
-        // Clear localStorage when summaries are empty
-        localStorage.removeItem('rss_summaries');
-        console.log('[Summaries] Cleared from localStorage');
-      }
+      const data = await response.json();
+      const loadedSummaries = data.summaries.map(s => ({
+        id: s.id,
+        text: s.text,
+        timestamp: s.created_at,
+        articleNumber: s.article_number,
+        isError: false
+      }));
+      setSummaries(loadedSummaries);
+      console.log('[Summaries] Loaded from Supabase:', loadedSummaries.length);
     } catch (error) {
-      console.error('[Summaries] Error saving to localStorage:', error);
+      console.error('[Summaries] Error loading from Supabase:', error);
     }
-  }, [summaries]);
+  };
+
+  const saveSummary = async (text, articleNumber = null) => {
+    try {
+      const response = await fetch('/api/summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, articleNumber })
+      });
+
+      if (!response.ok) throw new Error('Failed to save summary');
+
+      const data = await response.json();
+      const newSummary = {
+        id: data.summary.id,
+        text: data.summary.text,
+        timestamp: data.summary.created_at,
+        articleNumber: data.summary.article_number,
+        isError: false
+      };
+
+      setSummaries([newSummary, ...summaries]);
+      console.log('[Summaries] Saved to Supabase:', newSummary.id);
+      return newSummary;
+    } catch (error) {
+      console.error('[Summaries] Error saving to Supabase:', error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    loadSummaries();
+  }, []);
 
   const showStatus = (message, duration = 3000) => {
     setStatusMessage(message);
@@ -845,12 +870,8 @@ export default function Home() {
           summaryText = summaryText ? String(summaryText) : 'Summary generated';
         }
 
-        const newSummary = {
-          text: summaryText,
-          timestamp: new Date().toISOString(),
-          id: Date.now()
-        };
-        setSummaries([newSummary, ...summaries]);
+        // Save to Supabase
+        await saveSummary(summaryText);
         showStatus('✅ Summary generated!');
       } else {
         const errorData = await response.json();
@@ -936,13 +957,8 @@ export default function Home() {
           summaryText = summaryText ? String(summaryText) : 'Summary generated';
         }
 
-        const newSummary = {
-          text: summaryText,
-          timestamp: new Date().toISOString(),
-          id: Date.now(),
-          articleNumber: boxIndex + 1
-        };
-        setSummaries([newSummary, ...summaries]);
+        // Save to Supabase with article number
+        await saveSummary(summaryText, boxIndex + 1);
         showStatus('✅ Summary generated!');
       } else {
         const errorData = await response.json();
@@ -998,16 +1014,30 @@ export default function Home() {
     }
   };
 
-  const clearNotes = () => {
+  const clearNotes = async () => {
     const hasContent = noteBoxes.some(box => box.content.trim().length > 0);
     if (!hasContent && summaries.length === 0) {
       showStatus('Notes are already empty');
       return;
     }
-    if (confirm('Clear all notes and summaries?')) {
+    if (!confirm('Clear all notes and summaries?')) return;
+
+    try {
+      // Clear summaries from Supabase
+      if (summaries.length > 0) {
+        const response = await fetch('/api/summaries/clear', {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to clear summaries');
+      }
+
       setNoteBoxes([{ id: 1, content: '' }]);
       setSummaries([]);
       showStatus('🗑️ Notes cleared');
+    } catch (error) {
+      console.error('[Clear Notes] Error:', error);
+      showStatus('❌ Failed to clear summaries');
     }
   };
 
@@ -1020,10 +1050,23 @@ export default function Home() {
     }
   };
 
-  const deleteSummary = (summaryId) => {
-    if (confirm('Delete this summary?')) {
+  const deleteSummary = async (summaryId) => {
+    if (!confirm('Delete this summary?')) return;
+
+    try {
+      const response = await fetch('/api/summaries/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: summaryId })
+      });
+
+      if (!response.ok) throw new Error('Failed to delete summary');
+
       setSummaries(summaries.filter(s => s.id !== summaryId));
       showStatus('🗑️ Summary deleted');
+    } catch (error) {
+      console.error('[Summaries] Error deleting:', error);
+      showStatus('❌ Failed to delete summary');
     }
   };
 
@@ -1413,13 +1456,15 @@ export default function Home() {
 
                     {/* Divider if there are hidden articles */}
                     {flaggedArticles.filter(item => item.hidden).length > 0 && (
-                      <div className="hidden-divider">
-                        <span>Hidden Articles ({flaggedArticles.filter(item => item.hidden).length})</span>
+                      <div className="hidden-divider" onClick={() => setHideHiddenArticles(!hideHiddenArticles)} style={{cursor: 'pointer'}}>
+                        <span>
+                          {hideHiddenArticles ? '▶' : '▼'} Hidden Articles ({flaggedArticles.filter(item => item.hidden).length})
+                        </span>
                       </div>
                     )}
 
                     {/* Hidden flagged articles */}
-                    {flaggedArticles.filter(item => item.hidden).map((item) => {
+                    {!hideHiddenArticles && flaggedArticles.filter(item => item.hidden).map((item) => {
                       const scoreData = confidenceScores[item.link];
                       const confidence = scoreData?.confidence;
                       const getConfidenceLevel = (score) => {
@@ -1524,13 +1569,15 @@ export default function Home() {
 
                   {/* Divider if there are published articles */}
                   {approvedArticles.filter(item => item.published).length > 0 && (
-                    <div className="hidden-divider">
-                      <span>Published Articles ({approvedArticles.filter(item => item.published).length})</span>
+                    <div className="hidden-divider" onClick={() => setHidePublishedArticles(!hidePublishedArticles)} style={{cursor: 'pointer'}}>
+                      <span>
+                        {hidePublishedArticles ? '▶' : '▼'} Published Articles ({approvedArticles.filter(item => item.published).length})
+                      </span>
                     </div>
                   )}
 
                   {/* Published approved articles */}
-                  {approvedArticles.filter(item => item.published).map((item) => (
+                  {!hidePublishedArticles && approvedArticles.filter(item => item.published).map((item) => (
                     <div key={item.dbId || item.id} className="feed-item approved published-article">
                       <span className={`feed-source ${item.source}`}>{item.sourceName}</span>
                       <div className="feed-title">{decodeHtmlEntities(item.title)}</div>
@@ -1703,13 +1750,6 @@ export default function Home() {
                   className="btn-add-box"
                 >
                   ➕ Add Article Box
-                </button>
-                <button
-                  onClick={summarizeWithAI}
-                  disabled={summarizing || noteBoxes.every(box => !box.content.trim())}
-                  className="btn-ai"
-                >
-                  {summarizing ? '🤖 Summarizing...' : '🤖 Summarize with AI'}
                 </button>
                 <button
                   onClick={clearNotes}
