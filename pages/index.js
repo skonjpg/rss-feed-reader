@@ -1527,9 +1527,9 @@ export default function Home() {
                       {summary.articleNumber && (
                         <span className="article-number-badge">Article {summary.articleNumber}</span>
                       )}
-                      <span className="summary-date">{formatDate(summary.timestamp)}</span>
+                      <span className="summary-date">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
                     </div>
-                    <div className="summary-text">{summary.text}</div>
+                    <div className="summary-text">{summary.text || 'No content'}</div>
                     <div className="feed-meta">
                       <div className="feed-actions">
                         <button
@@ -1629,9 +1629,9 @@ export default function Home() {
                   <div key={summary.id} className={`summary-section ${summary.isError ? 'error' : ''}`}>
                     <div className="summary-header">
                       <h3 className="summary-title">AI Summary</h3>
-                      <span className="summary-time">{formatDate(summary.timestamp)}</span>
+                      <span className="summary-time">{summary.timestamp ? formatDate(summary.timestamp) : 'Unknown time'}</span>
                     </div>
-                    <div className="summary-content">{summary.text}</div>
+                    <div className="summary-content">{summary.text || 'No content'}</div>
                   </div>
                 ))}
               </div>
