@@ -279,9 +279,9 @@ export default function Home() {
           return !isApproved && !isFlagged && !isJunked && !hasScore;
         })
         .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-        .slice(0, 20); // Only score 20 at a time
+        .slice(0, 40); // Only score 40 at a time
 
-      console.log(`Found ${newArticles.length} unscored articles (after filtering and limiting to 20)`);
+      console.log(`Found ${newArticles.length} unscored articles (after filtering and limiting to 40)`);
 
       if (newArticles.length > 0) {
         scoreArticlesWithML(newArticles);
@@ -1874,14 +1874,14 @@ export default function Home() {
         }
 
         .tab:hover {
-          border-color: #002855;
-          color: #002855;
+          border-color: #3b82f6;
+          color: #3b82f6;
         }
 
         .tab.active {
-          background: #002855;
+          background: #3b82f6;
           color: white;
-          border-color: #002855;
+          border-color: #3b82f6;
         }
 
         .ml-stats {
@@ -1907,7 +1907,7 @@ export default function Home() {
 
         .btn-primary {
           padding: 10px 20px;
-          background: #002855;
+          background: #3b82f6;
           color: white;
           border: none;
           border-radius: 8px;
@@ -1916,12 +1916,12 @@ export default function Home() {
           font-weight: 600;
           font-family: 'Inter', sans-serif;
           transition: all 0.2s;
-          box-shadow: 0 2px 4px rgba(0,40,85,0.15);
+          box-shadow: 0 2px 4px rgba(59,130,246,0.15);
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #003d82;
-          box-shadow: 0 4px 8px rgba(0,40,85,0.25);
+          background: #2563eb;
+          box-shadow: 0 4px 12px rgba(59,130,246,0.3);
           transform: translateY(-1px);
         }
 
@@ -1939,7 +1939,7 @@ export default function Home() {
 
         .btn-danger {
           padding: 10px 20px;
-          background: #dc2626;
+          background: #ef4444;
           color: white;
           border: none;
           border-radius: 8px;
@@ -2210,7 +2210,7 @@ export default function Home() {
 
         .btn-approve {
           padding: 8px 16px;
-          background: #059669;
+          background: #10b981;
           color: white;
           border: none;
           border-radius: 7px;
@@ -2222,20 +2222,20 @@ export default function Home() {
         }
 
         .btn-approve:hover:not(:disabled) {
-          background: #047857;
+          background: #059669;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(5,150,105,0.3);
+          box-shadow: 0 2px 6px rgba(16,185,129,0.3);
         }
 
         .btn-approve.approved {
-          background: #dc2626;
+          background: #ef4444;
           cursor: pointer;
         }
 
         .btn-approve.approved:hover {
-          background: #b91c1c;
+          background: #dc2626;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+          box-shadow: 0 2px 6px rgba(239,68,68,0.3);
         }
 
         .btn-flag {
@@ -2271,8 +2271,8 @@ export default function Home() {
         .btn-visit {
           padding: 8px 16px;
           background: transparent;
-          color: #002855;
-          border: 2px solid #002855;
+          color: #3b82f6;
+          border: 2px solid #3b82f6;
           border-radius: 7px;
           cursor: pointer;
           font-size: 13px;
@@ -2282,7 +2282,7 @@ export default function Home() {
         }
 
         .btn-visit:hover {
-          background: #002855;
+          background: #3b82f6;
           color: white;
           transform: translateY(-1px);
         }
@@ -2290,8 +2290,8 @@ export default function Home() {
         .btn-link {
           padding: 8px 16px;
           background: transparent;
-          color: #6366f1;
-          border: 2px solid #6366f1;
+          color: #3b82f6;
+          border: 2px solid #3b82f6;
           border-radius: 7px;
           cursor: pointer;
           font-size: 13px;
@@ -2301,15 +2301,15 @@ export default function Home() {
         }
 
         .btn-link:hover {
-          background: #6366f1;
+          background: #3b82f6;
           color: white;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(99,102,241,0.3);
+          box-shadow: 0 2px 6px rgba(59,130,246,0.3);
         }
 
         .btn-junk {
           padding: 8px 16px;
-          background: #dc2626;
+          background: #ef4444;
           color: white;
           border: none;
           border-radius: 7px;
@@ -2321,9 +2321,9 @@ export default function Home() {
         }
 
         .btn-junk:hover:not(:disabled) {
-          background: #b91c1c;
+          background: #dc2626;
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+          box-shadow: 0 2px 6px rgba(239,68,68,0.3);
         }
 
         .btn-junk.junked {
