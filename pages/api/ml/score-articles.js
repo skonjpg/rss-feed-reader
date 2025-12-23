@@ -24,11 +24,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Articles array required' });
     }
 
-    // Frontend already filters, sorts, and limits to 20 articles
+    // Frontend already filters, sorts, and limits to 40 articles
     // Just score what we receive
-    console.log(`Scoring ${articles.length} articles with Claude...`);
+    console.log(`Scoring ${articles.length} articles with Neural Network...`);
 
-    // Score articles using Claude
+    // Score articles using Neural Network
     const scoredArticles = await scoreBatchArticles(articles);
 
     // Auto-flag high confidence articles and auto-junk low confidence articles
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
           description: article.description,
           confidence_score: article.confidence,
           reasoning: article.reasoning,
-          model_version: 'claude-3.5-sonnet'
+          model_version: 'neural-network-v1'
         }, {
           onConflict: 'link'
         });
