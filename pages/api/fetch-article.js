@@ -162,19 +162,74 @@ export default async function handler(req, res) {
     // Try Reuters-specific selectors
     if (!content || content.length < 200) {
       const reutersSelectors = [
+        // Modern Reuters selectors (2024+)
         '[data-testid="paragraph"]',
+        '[data-testid="body-text"]',
+        '[data-testid="article-body"]',
+        '.article__body__content',
+        '.article-body__content',
+        '.article-body__element',
+
+        // Legacy Reuters selectors
         '.article-body__content__17Yit',
         '.StandardArticleBody_body',
         '[class*="ArticleBody"]',
-        '[class*="article-body"]'
+        '[class*="article-body"]',
+
+        // Generic patterns
+        'p[data-testid]',
+        'div[data-testid*="paragraph"]'
       ];
 
       for (const selector of reutersSelectors) {
         const elements = root.querySelectorAll(selector);
         if (elements.length > 0) {
-          content = Array.from(elements).map(el => el.textContent.trim()).filter(t => t.length > 0).join('\n\n');
-          console.log(`[Fetch Article] Found content using Reuters selector: ${selector}`);
-          break;
+          // For Reuters, extract text and filter out navigation/ads
+          const extractedText = Array.from(elements)
+            .map(el => {
+              const text = el.textContent.trim();
+              // Filter out navigation, ads, and short snippets
+              if (text.length < 40) return '';
+              if (text.includes('Sign up here') || text.includes('Register now')) return '';
+              if (text.includes('Reporting by') && text.length < 100) return '';
+              return text;
+            })
+            .filter(t => t.length > 0)
+            .join('\n\n');
+
+          if (extractedText.length > 200) {
+            content = extractedText;
+            console.log(`[Fetch Article] Found content using Reuters selector: ${selector} (${elements.length} elements, ${content.length} chars)`);
+            break;
+          }
+        }
+      }
+
+      // If Reuters and still no content, try a more aggressive approach
+      if ((!content || content.length < 200) && url.includes('reuters.com')) {
+        console.log('[Fetch Article] Reuters: Trying aggressive extraction');
+        const allParagraphs = root.querySelectorAll('p');
+        const mainContent = Array.from(allParagraphs)
+          .map(p => {
+            const text = p.textContent.trim();
+            // Skip short paragraphs and common Reuters UI text
+            if (text.length < 40) return '';
+            if (text.match(/^(Reuters|NEW YORK|WASHINGTON|LONDON)/)) {
+              // Include location lines but mark them
+              return text;
+            }
+            if (text.includes('Register for free') ||
+                text.includes('Sign up') ||
+                text.includes('Log in') ||
+                text.includes('Reporting by')) return '';
+            return text;
+          })
+          .filter(t => t.length > 0);
+
+        // Only use if we got substantial content
+        if (mainContent.length >= 5) {
+          content = mainContent.join('\n\n');
+          console.log(`[Fetch Article] Reuters: Aggressive extraction found ${mainContent.length} paragraphs`);
         }
       }
     }
