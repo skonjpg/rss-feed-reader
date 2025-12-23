@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bookmarklet Builder</title>
+</head>
+<body>
+  <h1>Bookmarklet v2 - Clean Version</h1>
+
+  <h2>Source Code (for debugging):</h2>
+  <textarea id="source" style="width:100%;height:400px;font-family:monospace;font-size:11px">
+(function() {
+  function extractContent() {
+    var NL = String.fromCharCode(10);
+    var title = document.querySelector('h1') || document.querySelector('title');
+    var content = '';
+    var container = null;
+    var selectors = ['article', '[role=article]', 'main', '[class*=article-body]', '[class*=story-body]', '[class*=post-content]', '.content'];
+
+    for (var i = 0; i < selectors.length; i++) {
+      container = document.querySelector(selectors[i]);
+      if (container && container.textContent.length > 500) break;
+    }
+    if (!container) container = document.body;
+
+    var textElements = container.querySelectorAll('p,h1,h2,h3,h4,h5,h6,li,blockquote');
+    if (textElements.length === 0) textElements = container.querySelectorAll('div');
+
+    var extracted = [];
+    for (var j = 0; j < textElements.length; j++) {
+      var el = textElements[j];
+      var text = el.textContent.trim();
+      if (text.length < 30) continue;
+      if (el.tagName.match(/^H[1-6]$/)) {
+        extracted.push(NL + '## ' + text + NL);
+      } else if (el.tagName === 'BLOCKQUOTE') {
+        extracted.push('> ' + text);
+      } else {
+        extracted.push(text);
+      }
+    }
+
+    var uniqueLines = {};
+    var dedupe = [];
+    for (var k = 0; k < extracted.length; k++) {
+      if (!uniqueLines[extracted[k]]) {
+        uniqueLines[extracted[k]] = true;
+        dedupe.push(extracted[k]);
+      }
+    }
+    content = dedupe.join(NL + NL);
+
+    // Reuters-specific extraction
+    if (content.length < 200 && window.location.hostname.indexOf('reuters') >= 0) {
+      var rparas = document.querySelectorAll('[data-testid*=paragraph],[data-testid*=body],p');
+      var reuters = [];
+      for (var m = 0; m < rparas.length; m++) {
+        var t = rparas[m].textContent.trim();
+        if (t.length > 40 && t.indexOf('Sign up') < 0 && t.indexOf('Register') < 0 && t.indexOf('Log in') < 0) {
+          if (!(t.indexOf('Reporting by') >= 0 && t.length < 100)) {
+            reuters.push(t);
+          }
+        }
+      }
+      if (reuters.length >= 5) {
+        content = reuters.join(NL + NL);
+      }
+    }
+
+    if (content.length < 200) {
+      content = container.textContent.trim();
+    }
+
+    return '--- ' + title.textContent.trim() + ' ---' + NL + 'Source: ' + window.location.hostname + NL + 'URL: ' + window.location.href + NL + NL + content + NL + '---' + NL;
+  }
+
+  var result = extractContent();
+  console.log('[Bookmarklet] Extracted ' + result.length + ' characters');
+
+  // Try postMessage first
+  try {
+    if (window.opener && !window.opener.closed) {
+      console.log('[Bookmarklet] Trying postMessage');
+      window.opener.postMessage({type: 'ARTICLE_CONTENT', content: result}, '*');
+
+      var notif = document.createElement('div');
+      notif.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:20px 30px;border-radius:8px;z-index:999999;box-shadow:0 10px 40px rgba(0,0,0,0.3);font-family:sans-serif;font-weight:600;font-size:16px';
+      notif.textContent = 'Article sent! (' + result.length + ' chars)';
+      document.body.appendChild(notif);
+      setTimeout(function() {
+        if (document.body.contains(notif)) document.body.removeChild(notif);
+      }, 3000);
+      return;
+    }
+  } catch (e) {
+    console.log('[Bookmarklet] postMessage failed:', e);
+  }
+
+  // Fallback to localStorage
+  console.log('[Bookmarklet] Using localStorage');
+  localStorage.setItem('rss_article_content', JSON.stringify({content: result, timestamp: Date.now()}));
+
+  // Show modal
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:999999;display:flex;align-items:center;justify-content:center';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:white;padding:30px;border-radius:12px;max-width:600px;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)';
+
+  var title = document.createElement('h2');
+  title.style.cssText = 'margin:0 0 20px 0;color:#1e293b';
+  title.textContent = 'Article Extracted';
+
+  var msg = document.createElement('p');
+  msg.style.cssText = 'color:#10b981;margin-bottom:15px;font-weight:600';
+  msg.textContent = 'Saved to clipboard + localStorage';
+
+  var info = document.createElement('p');
+  info.style.cssText = 'color:#64748b;margin-bottom:20px;font-size:14px';
+  info.textContent = result.split(String.fromCharCode(10)).length + ' lines (' + result.length + ' characters) - Go back to RSS Reader!';
+
+  var textarea = document.createElement('textarea');
+  textarea.readOnly = true;
+  textarea.style.cssText = 'width:100%;height:250px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:11px;resize:vertical';
+  textarea.value = result;
+
+  var btnDiv = document.createElement('div');
+  btnDiv.style.cssText = 'display:flex;gap:12px;margin-top:20px';
+
+  var copyBtn = document.createElement('button');
+  copyBtn.style.cssText = 'flex:1;padding:12px 24px;background:#10b981;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px';
+  copyBtn.textContent = 'Copy Again';
+  copyBtn.onclick = function() {
+    navigator.clipboard.writeText(result).then(function() {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(function() { copyBtn.textContent = 'Copy Again'; }, 1500);
+    });
+  };
+
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'padding:12px 24px;background:#64748b;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:14px';
+  closeBtn.textContent = 'Close';
+  closeBtn.onclick = function() {
+    document.body.removeChild(modal);
+  };
+
+  btnDiv.appendChild(copyBtn);
+  btnDiv.appendChild(closeBtn);
+
+  box.appendChild(title);
+  box.appendChild(msg);
+  box.appendChild(info);
+  box.appendChild(textarea);
+  box.appendChild(btnDiv);
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(result).catch(function() {});
+
+  // Close on background click
+  modal.onclick = function(e) {
+    if (e.target === modal) document.body.removeChild(modal);
+  };
+})();
+</textarea>
+
+  <button onclick="minify()">Minify and Test</button>
+
+  <h2>Minified (bookmarklet code):</h2>
+  <textarea id="minified" style="width:100%;height:200px;font-family:monospace;font-size:11px"></textarea>
+
+  <h2>Test Bookmarklet:</h2>
+  <a id="bookmarklet" href="#" style="background:#6366f1;color:white;padding:16px 32px;border-radius:8px;text-decoration:none;display:inline-block">Extract Article</a>
+
+  <script>
+    function minify() {
+      var source = document.getElementById('source').value;
+      // Simple minification
+      var minified = source
+        .replace(/\/\/.*$/gm, '') // Remove comments
+        .replace(/\s+/g, ' ') // Collapse whitespace
+        .replace(/\s*([{}();,=+\-*/<>!&|])\s*/g, '$1') // Remove spaces around operators
+        .trim();
+
+      document.getElementById('minified').value = minified;
+      document.getElementById('bookmarklet').href = 'javascript:' + encodeURIComponent(minified);
+      alert('Minified! Drag the "Extract Article" button to your bookmarks bar.');
+    }
+  </script>
+
+  <h2>Sample Content:</h2>
+  <h1>Test Article</h1>
+  <p>This is paragraph one with enough content to be extracted by the bookmarklet system.</p>
+  <p>This is paragraph two with more test content to ensure proper extraction.</p>
+  <p>Third paragraph here to provide additional testing material.</p>
+</body>
+</html>
